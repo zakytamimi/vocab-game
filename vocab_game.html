@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Vocab Arena – Word Memory Game</title>
+<meta name="description" content="Learn English vocabulary from A1 to C2 with flashcards, timed quizzes, and sentence practice.">
+
+<!-- PWA / installability -->
+<meta name="theme-color" content="#0b0e13">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vocab Arena">
+<link id="apple-touch-icon" rel="apple-touch-icon">
+<link id="favicon-icon" rel="icon" type="image/png">
+<link id="manifest-link" rel="manifest">
+
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0e13;
+    --surface: #11151c;
+    --card: #161b24;
+    --card2: #1c222e;
+    --border: #ffffff14;
+    --border2: #ffffff28;
+    --text: #eef1f6;
+    --muted: #8d93a3;
+    --lime: #c6ff5c;
+    --lime-dim: #c6ff5c22;
+    --violet: #9d7bff;
+    --violet-dim: #9d7bff22;
+    --rose: #ff6b8a;
+    --rose-dim: #ff6b8a22;
+    --cyan: #5ce6e0;
+    --cyan-dim: #5ce6e022;
+    --amber-dim: #fbbf2422;
+    --green: #4ade80;
+    --red: #f87171;
+    --amber: #fbbf24;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: 'Sora', sans-serif; background: var(--bg); color: var(--text);
+    min-height: 100vh; min-height: 100dvh; overscroll-behavior-y: none;
+  }
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(circle at 15% 10%, #c6ff5c14, transparent 45%),
+      radial-gradient(circle at 85% 85%, #9d7bff18, transparent 45%);
+  }
+  #app {
+    position: relative; z-index: 1; max-width: 880px; margin: 0 auto;
+    padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(80px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  }
+
+  /* HEADER */
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .brand-mark {
+    width: 38px; height: 38px; border-radius: 11px; background: var(--lime);
+    display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; color: #0b0e13; font-size: 17px; flex-shrink: 0;
+  }
+  .brand h1 { font-family: 'Space Grotesk', sans-serif; font-size: 19px; font-weight: 700; letter-spacing: -0.3px; }
+  .brand p { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+  .stat-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pill {
+    background: var(--card); border: 1px solid var(--border); border-radius: 99px;
+    padding: 6px 12px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 5px;
+    font-weight: 500; white-space: nowrap;
+  }
+  .pill b { color: var(--text); font-weight: 700; }
+  .pill.streak b { color: var(--amber); }
+  .pill.xp b { color: var(--lime); }
+
+  /* LEVEL TRACK */
+  .section-label-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .section-label-row h2 { font-size: 12px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); }
+  .level-track { display: flex; gap: 6px; margin-bottom: 18px; flex-wrap: wrap; }
+  .level-node {
+    flex: 1; min-width: 78px; background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 10px; cursor: pointer; transition: all 0.15s; text-align: center; position: relative;
+  }
+  .level-node:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .level-node.active { border-color: var(--lime); background: var(--lime-dim); }
+  .level-node .lv-tag { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: var(--muted); }
+  .level-node.active .lv-tag { color: var(--lime); }
+  .level-node .lv-name { font-size: 13px; font-weight: 600; margin-top: 3px; }
+  .level-node .lv-prog { font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .level-node .lv-check { position: absolute; top: 6px; right: 8px; font-size: 11px; color: var(--green); }
+
+  /* SECTION (TOPIC) PICKER */
+  .topic-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-bottom: 22px; }
+  .topic-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 14px; cursor: pointer; transition: all 0.15s; text-align: left; position: relative;
+  }
+  .topic-card:hover { border-color: var(--border2); transform: translateY(-2px); }
+  .topic-card.active { border-color: var(--violet); background: var(--violet-dim); }
+  .topic-card .tc-name { font-size: 13px; font-weight: 600; }
+  .topic-card .tc-count { font-size: 10px; color: var(--muted); margin-top: 4px; }
+  .topic-card.active .tc-count { color: var(--violet); }
+  .topic-card .tc-check { position: absolute; top: 8px; right: 10px; font-size: 11px; color: var(--green); }
+
+  /* MODE TABS */
+  .mode-row { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; }
+  .mode-btn {
+    background: var(--card); border: 1px solid var(--border); color: var(--muted);
+    font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 600; padding: 10px 18px;
+    border-radius: 11px; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .mode-btn:hover { border-color: var(--border2); color: var(--text); }
+  .mode-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+  /* CARD SHELL */
+  .game-shell {
+    background: var(--card); border: 1px solid var(--border); border-radius: 22px;
+    padding: 32px; min-height: 360px; position: relative; overflow: hidden;
+  }
+  .shell-tag {
+    position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    background: linear-gradient(90deg, var(--lime), var(--violet));
+  }
+
+  /* ============ FLASHCARD MODE ============ */
+  .fc-progress { font-size: 12px; color: var(--muted); margin-bottom: 18px; display: flex; justify-content: space-between; }
+  .flashcard-wrap { display: flex; justify-content: center; margin-bottom: 24px; }
+  .flashcard {
+    width: 100%; max-width: 460px; height: 260px; position: relative; cursor: pointer;
+    perspective: 1200px;
+  }
+  .flashcard-inner {
+    width: 100%; height: 100%; position: relative; transition: transform 0.5s cubic-bezier(.4,.2,.2,1);
+    transform-style: preserve-3d;
+  }
+  .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+  .fc-face {
+    position: absolute; inset: 0; backface-visibility: hidden; border-radius: 18px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px; text-align: center; border: 1px solid var(--border2);
+  }
+  .fc-front { background: var(--card2); }
+  .fc-back { background: var(--violet-dim); border-color: #9d7bff44; transform: rotateY(180deg); }
+  .fc-word { font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 700; letter-spacing: -0.5px; }
+  .fc-phon { font-size: 13px; color: var(--muted); margin-top: 8px; font-style: italic; }
+  .fc-pos { display: inline-block; background: var(--lime-dim); color: var(--lime); font-size: 10px; font-weight: 700; padding: 3px 10px; border-radius: 99px; margin-top: 12px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .fc-hint { font-size: 11px; color: var(--muted); margin-top: 18px; }
+  .fc-def { font-size: 16px; font-weight: 600; }
+  .fc-example { font-size: 13px; color: var(--text); opacity: 0.85; margin-top: 14px; font-style: italic; line-height: 1.5; }
+  .fc-example .em { color: var(--violet); font-weight: 700; font-style: normal; }
+
+  .fc-controls { display: flex; justify-content: center; gap: 12px; }
+  .fc-btn {
+    border: 1px solid var(--border2); background: var(--card2); color: var(--text);
+    font-family: 'Sora', sans-serif; font-weight: 600; font-size: 13px; padding: 11px 22px;
+    border-radius: 12px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 6px;
+  }
+  .fc-btn:hover { transform: translateY(-1px); }
+  .fc-btn.again { color: var(--red); }
+  .fc-btn.again:hover { border-color: #f8717155; background: #f8717112; }
+  .fc-btn.good { color: var(--amber); }
+  .fc-btn.good:hover { border-color: #fbbf2455; background: #fbbf2412; }
+  .fc-btn.easy { color: var(--green); }
+  .fc-btn.easy:hover { border-color: #4ade8055; background: #4ade8012; }
+
+  /* ============ QUIZ MODE ============ */
+  .quiz-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 22px; }
+  .timer-ring { position: relative; width: 46px; height: 46px; }
+  .timer-ring svg { transform: rotate(-90deg); }
+  .timer-ring circle { fill: none; stroke-width: 4; }
+  .timer-bg { stroke: var(--border); }
+  .timer-fg { stroke: var(--lime); stroke-linecap: round; transition: stroke-dashoffset 1s linear, stroke 0.3s; }
+  .timer-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; font-family: 'Space Grotesk', sans-serif; }
+  .quiz-counter { font-size: 12px; color: var(--muted); }
+  .quiz-q { text-align: center; margin-bottom: 28px; }
+  .quiz-q-label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .quiz-q-word { font-family: 'Space Grotesk', sans-serif; font-size: 30px; font-weight: 700; }
+  .quiz-q-sub { font-size: 13px; color: var(--muted); margin-top: 6px; font-style: italic; }
+  .quiz-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .quiz-opt {
+    background: var(--card2); border: 1px solid var(--border2); border-radius: 14px;
+    padding: 16px 18px; font-size: 14px; color: var(--text); cursor: pointer; text-align: left;
+    transition: all 0.15s; font-weight: 500; line-height: 1.4;
+  }
+  .quiz-opt:hover { border-color: var(--lime); transform: translateY(-1px); }
+  .quiz-opt.correct-opt { border-color: var(--green); background: #4ade8018; color: var(--green); }
+  .quiz-opt.wrong-opt { border-color: var(--red); background: #f8717118; color: var(--red); }
+  .quiz-opt.disabled { pointer-events: none; }
+  .quiz-feedback { text-align: center; margin-top: 20px; font-size: 14px; font-weight: 600; min-height: 24px; }
+  .quiz-feedback.ok { color: var(--green); }
+  .quiz-feedback.bad { color: var(--red); }
+
+  /* ============ SENTENCE FIX MODE ============ */
+  .sf-label { font-size: 12px; color: var(--muted); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .sf-sentence-box {
+    background: var(--card2); border: 1px solid var(--border2); border-radius: 16px;
+    padding: 22px; margin-bottom: 18px;
+  }
+  .sf-sentence { font-size: 18px; line-height: 1.7; }
+  .sf-blank-input {
+    background: var(--bg); border: 1.5px solid var(--violet); border-radius: 8px;
+    color: var(--lime); font-family: 'Sora', sans-serif; font-size: 17px; font-weight: 600;
+    padding: 4px 10px; min-width: 110px; outline: none; text-align: center;
+    transition: border-color 0.2s;
+  }
+  .sf-blank-input:focus { border-color: var(--lime); box-shadow: 0 0 0 3px var(--lime-dim); }
+  .sf-blank-input.correct { border-color: var(--green); color: var(--green); background: #4ade8012; }
+  .sf-blank-input.wrong { border-color: var(--red); color: var(--red); background: #f8717112; }
+  .sf-translation { font-size: 12px; color: var(--muted); margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .sf-actions { display: flex; gap: 10px; margin-top: 4px; }
+  .sf-corrected {
+    margin-top: 16px; padding: 14px 16px; border-radius: 12px; font-size: 14px; line-height: 1.6;
+    display: none;
+  }
+  .sf-corrected.show { display: block; }
+  .sf-corrected.ok { background: #4ade8014; border: 1px solid #4ade8040; color: var(--green); }
+  .sf-corrected.bad { background: #f8717114; border: 1px solid #f8717140; }
+  .sf-corrected .word-correct { color: var(--green); font-weight: 700; }
+  .sf-corrected .word-wrong { color: var(--red); text-decoration: line-through; opacity: 0.7; }
+
+  .primary-btn {
+    background: var(--lime); color: #0b0e13; border: none; font-family: 'Sora', sans-serif;
+    font-weight: 700; font-size: 14px; padding: 12px 26px; border-radius: 12px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .primary-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+  .primary-btn:disabled { background: var(--border2); color: var(--muted); cursor: not-allowed; transform: none; }
+  .ghost-btn {
+    background: transparent; color: var(--muted); border: 1px solid var(--border2);
+    font-family: 'Sora', sans-serif; font-weight: 600; font-size: 14px; padding: 12px 22px;
+    border-radius: 12px; cursor: pointer; transition: all 0.15s;
+  }
+  .ghost-btn:hover { color: var(--text); border-color: var(--border2); }
+
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .empty-state .es-emoji { font-size: 40px; margin-bottom: 12px; }
+
+  /* END SCREEN */
+  .end-screen { text-align: center; padding: 30px 10px; }
+  .end-emoji { font-size: 52px; margin-bottom: 8px; }
+  .end-title { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+  .end-sub { font-size: 14px; color: var(--muted); margin-bottom: 24px; }
+  .end-stats { display: flex; gap: 12px; justify-content: center; margin-bottom: 28px; flex-wrap: wrap; }
+  .end-stat { background: var(--card2); border: 1px solid var(--border); border-radius: 14px; padding: 16px 22px; min-width: 100px; }
+  .end-stat-val { font-family: 'Space Grotesk', sans-serif; font-size: 24px; font-weight: 700; }
+  .end-stat-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .end-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  /* INSTALL BANNER */
+  .install-banner {
+    display: none; align-items: center; gap: 12px; background: var(--card);
+    border: 1px solid var(--lime); border-radius: 14px; padding: 12px 16px; margin-bottom: 18px;
+  }
+  .install-banner.show { display: flex; }
+  .install-banner .ib-icon { font-size: 22px; flex-shrink: 0; }
+  .install-banner .ib-text { flex: 1; min-width: 0; }
+  .install-banner .ib-title { font-size: 13px; font-weight: 700; }
+  .install-banner .ib-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .install-banner .ib-btn {
+    background: var(--lime); color: #0b0e13; border: none; font-family: 'Sora', sans-serif;
+    font-weight: 700; font-size: 12px; padding: 8px 14px; border-radius: 9px; cursor: pointer; flex-shrink: 0;
+  }
+  .install-banner .ib-close {
+    background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer;
+    padding: 4px 6px; flex-shrink: 0; line-height: 1;
+  }
+
+  .hidden { display: none !important; }
+
+  /* ============ RESPONSIVE BREAKPOINTS ============ */
+
+  /* Tablets and small laptops */
+  @media (max-width: 900px) {
+    #app { padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); }
+  }
+
+  /* Phones */
+  @media (max-width: 600px) {
+    .brand h1 { font-size: 17px; }
+    .brand p { font-size: 10px; }
+    .brand-mark { width: 34px; height: 34px; font-size: 15px; border-radius: 9px; }
+    .topbar { margin-bottom: 18px; }
+
+    .section-label-row h2 { font-size: 11px; }
+    .level-track { gap: 5px; }
+    .level-node { min-width: 30%; flex: 1 1 30%; padding: 10px 6px; }
+    .level-node .lv-name { font-size: 12px; }
+    .level-node .lv-prog { font-size: 9px; }
+
+    .topic-grid { grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 7px; }
+    .topic-card { padding: 11px 12px; }
+
+    .mode-row { gap: 6px; margin-bottom: 16px; }
+    .mode-btn { padding: 10px 14px; font-size: 12px; flex: 1 1 auto; justify-content: center; }
+
+    .game-shell { padding: 18px 14px; border-radius: 18px; min-height: 320px; }
+
+    /* Flashcards */
+    .flashcard { max-width: 100%; height: 230px; }
+    .fc-word { font-size: 26px; }
+    .fc-def { font-size: 15px; }
+    .fc-example { font-size: 12.5px; }
+    .fc-controls { gap: 8px; flex-wrap: wrap; }
+    .fc-btn { flex: 1 1 28%; justify-content: center; padding: 12px 10px; font-size: 12px; }
+
+    /* Quiz */
+    .quiz-opts { grid-template-columns: 1fr; gap: 10px; }
+    .quiz-q-word { font-size: 25px; }
+    .quiz-opt { padding: 14px 16px; font-size: 13.5px; }
+    .quiz-top { margin-bottom: 18px; }
+
+    /* Sentence fix */
+    .sf-sentence { font-size: 16px; }
+    .sf-blank-input { min-width: 90px; font-size: 16px; }
+    .sf-actions { flex-wrap: wrap; }
+    .sf-actions .primary-btn, .sf-actions .ghost-btn { flex: 1 1 auto; text-align: center; }
+
+    .primary-btn, .ghost-btn { padding: 13px 22px; font-size: 14px; }
+
+    .end-stats { gap: 8px; }
+    .end-stat { min-width: 86px; padding: 14px 16px; }
+    .end-actions { flex-direction: column; width: 100%; }
+    .end-actions button { width: 100%; }
+  }
+
+  /* Very narrow phones (e.g. SE-class, 360px and below) */
+  @media (max-width: 380px) {
+    .stat-pills { width: 100%; justify-content: flex-start; }
+    .pill { font-size: 10px; padding: 5px 10px; }
+    .level-node { min-width: 47%; flex: 1 1 47%; }
+    .fc-btn { flex: 1 1 100%; }
+    .fc-word { font-size: 23px; }
+  }
+
+  /* Landscape phones - shrink vertical paddings */
+  @media (max-height: 480px) and (orientation: landscape) {
+    .flashcard { height: 190px; }
+    .game-shell { min-height: 240px; padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">V</div>
+      <div>
+        <h1>Vocab Arena</h1>
+        <p>Memorize words · fix sentences · level up</p>
+      </div>
+    </div>
+    <div class="stat-pills">
+      <div class="pill streak">🔥 <b id="streak-val">0</b></div>
+      <div class="pill xp">⚡ <b id="xp-val">0</b> XP</div>
+      <div class="pill">📚 <b id="mastered-val">0</b>/<span id="total-val">0</span></div>
+    </div>
+  </div>
+
+  <div class="install-banner" id="install-banner">
+    <span class="ib-icon">📲</span>
+    <div class="ib-text">
+      <div class="ib-title">Install Vocab Arena</div>
+      <div class="ib-sub">Add to your home screen for quick, full-screen access</div>
+    </div>
+    <button class="ib-btn" id="install-btn">Install</button>
+    <button class="ib-close" id="install-dismiss" aria-label="Dismiss">✕</button>
+  </div>
+
+  <div class="section-label-row"><h2>CEFR Level</h2></div>
+  <div class="level-track" id="level-track"></div>
+
+  <div class="section-label-row"><h2 id="topic-label">Topic Section</h2></div>
+  <div class="topic-grid" id="topic-grid"></div>
+
+  <div class="mode-row" id="mode-row">
+    <button class="mode-btn active" data-mode="flashcard" onclick="switchMode('flashcard')">🃏 Flashcards</button>
+    <button class="mode-btn" data-mode="quiz" onclick="switchMode('quiz')">⏱️ Timed Quiz</button>
+    <button class="mode-btn" data-mode="sentence" onclick="switchMode('sentence')">✍️ Fix the Sentence</button>
+  </div>
+
+  <div class="game-shell">
+    <div class="shell-tag"></div>
+    <div id="game-area"></div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// VOCAB DATABASE — leveled A1 -> C2, grouped by topic section
+// Sourced and verified against the CEFR wordlist (ENGLISH_CERF_WORDS.csv)
+// ============================================================
+const VOCAB_RAW = {"A1":{"Family & People":[{"w":"family","phon":"/ˈfæməli/","pos":"noun","def":"A group of people related to each other, such as parents and children.","ex":"My {w} likes to eat dinner together every night."},{"w":"father","phon":"/ˈfɑːðər/","pos":"noun","def":"A male parent.","ex":"My {w} drives me to school every morning."},{"w":"mother","phon":"/ˈmʌðər/","pos":"noun","def":"A female parent.","ex":"Her {w} works at a hospital."},{"w":"brother","phon":"/ˈbrʌðər/","pos":"noun","def":"A boy or man who has the same parents as you.","ex":"I share a room with my {w}."},{"w":"sister","phon":"/ˈsɪstər/","pos":"noun","def":"A girl or woman who has the same parents as you.","ex":"My {w} is older than me."},{"w":"husband","phon":"/ˈhʌzbənd/","pos":"noun","def":"The man a woman is married to.","ex":"Her {w} cooks dinner on weekends."},{"w":"wife","phon":"/waɪf/","pos":"noun","def":"The woman a man is married to.","ex":"His {w} works as a teacher."},{"w":"daughter","phon":"/ˈdɔːtər/","pos":"noun","def":"A person's female child.","ex":"Their {w} just started kindergarten."},{"w":"son","phon":"/sʌn/","pos":"noun","def":"A person's male child.","ex":"Their {w} plays football every Saturday."},{"w":"grandmother","phon":"/ˈɡrænmʌðər/","pos":"noun","def":"The mother of your father or mother.","ex":"My {w} bakes the best cookies."},{"w":"grandfather","phon":"/ˈɡrænfɑːðər/","pos":"noun","def":"The father of your father or mother.","ex":"My {w} tells great stories about the past."},{"w":"baby","phon":"/ˈbeɪbi/","pos":"noun","def":"A very young child.","ex":"The {w} slept the whole car ride home."},{"w":"friend","phon":"/frend/","pos":"noun","def":"A person you like and know well, not part of your family.","ex":"My best {w} lives next door."},{"w":"boy","phon":"/bɔɪ/","pos":"noun","def":"A male child.","ex":"The little {w} is playing with a ball."},{"w":"girl","phon":"/ɡɜːrl/","pos":"noun","def":"A female child.","ex":"The {w} is reading a book quietly."}],"Feelings":[{"w":"happy","phon":"/ˈhæpi/","pos":"adj","def":"Feeling or showing pleasure or satisfaction.","ex":"She felt {w} when she passed the test."},{"w":"sad","phon":"/sæd/","pos":"adj","def":"Feeling unhappy, often because something bad happened.","ex":"He looked {w} after losing the game."},{"w":"angry","phon":"/ˈæŋɡri/","pos":"adj","def":"Feeling strong displeasure, often wanting to shout.","ex":"My mom got {w} when I broke the vase."},{"w":"afraid","phon":"/əˈfreɪd/","pos":"adj","def":"Feeling fear or worry about something.","ex":"I'm {w} of spiders."},{"w":"tired","phon":"/ˈtaɪərd/","pos":"adj","def":"Needing rest or sleep; lacking energy.","ex":"I feel so {w} after a long day at work."},{"w":"excited","phon":"/ɪkˈsaɪtɪd/","pos":"adj","def":"Feeling very happy and full of energy about something.","ex":"The kids are {w} about the trip to the zoo."},{"w":"hungry","phon":"/ˈhʌŋɡri/","pos":"adj","def":"Wanting or needing food.","ex":"I'm so {w}, let's order pizza."},{"w":"lonely","phon":"/ˈloʊnli/","pos":"adj","def":"Feeling sad because you are alone.","ex":"He felt {w} after moving to a new city."},{"w":"shy","phon":"/ʃaɪ/","pos":"adj","def":"Nervous about talking to or meeting other people.","ex":"She's too {w} to speak in front of the class."},{"w":"glad","phon":"/ɡlæd/","pos":"adj","def":"Pleased or happy about something.","ex":"I'm {w} you could come to the party."},{"w":"surprise","phon":"/sərˈpraɪz/","pos":"noun","def":"A feeling caused by something unexpected.","ex":"We planned a {w} party for her birthday."},{"w":"worry","phon":"/ˈwɜːri/","pos":"verb","def":"To feel anxious or troubled about something.","ex":"Don't {w}, everything will be fine."}],"Food & Drink":[{"w":"apple","phon":"/ˈæpəl/","pos":"noun","def":"A round fruit with red, green, or yellow skin.","ex":"She ate an {w} for breakfast."},{"w":"banana","phon":"/bəˈnænə/","pos":"noun","def":"A long curved yellow fruit.","ex":"He packed a {w} in his lunch."},{"w":"bread","phon":"/bred/","pos":"noun","def":"A food made from baked flour and water.","ex":"We need to buy {w} for sandwiches."},{"w":"cheese","phon":"/tʃiːz/","pos":"noun","def":"A solid food made from milk.","ex":"I love {w} on my pasta."},{"w":"chicken","phon":"/ˈtʃɪkɪn/","pos":"noun","def":"A bird kept for its eggs and meat, or the meat itself.","ex":"We're having {w} for dinner tonight."},{"w":"coffee","phon":"/ˈkɒfi/","pos":"noun","def":"A hot drink made from roasted beans.","ex":"He drinks a cup of {w} every morning."},{"w":"egg","phon":"/eɡ/","pos":"noun","def":"An oval food laid by birds, often eaten for breakfast.","ex":"Can you fry an {w} for me?"},{"w":"juice","phon":"/dʒuːs/","pos":"noun","def":"A drink made from fruit or vegetables.","ex":"She poured a glass of orange {w}."},{"w":"meat","phon":"/miːt/","pos":"noun","def":"The flesh of an animal eaten as food.","ex":"He doesn't eat {w} because he's vegetarian."},{"w":"milk","phon":"/mɪlk/","pos":"noun","def":"A white liquid from cows, drunk or used in cooking.","ex":"Please buy a carton of {w} on your way home."},{"w":"rice","phon":"/raɪs/","pos":"noun","def":"Small white or brown grains cooked and eaten as food.","ex":"In Asia, {w} is eaten with almost every meal."},{"w":"soup","phon":"/suːp/","pos":"noun","def":"A liquid food made by cooking meat or vegetables in water.","ex":"This {w} is perfect for a cold day."},{"w":"sugar","phon":"/ˈʃʊɡər/","pos":"noun","def":"A sweet substance used to make food and drinks taste sweet.","ex":"He takes two spoons of {w} in his tea."},{"w":"vegetable","phon":"/ˈvedʒtəbəl/","pos":"noun","def":"A plant grown for food, such as carrots or potatoes.","ex":"Eating {w}s every day keeps you healthy."},{"w":"water","phon":"/ˈwɔːtər/","pos":"noun","def":"A clear liquid that humans and animals need to drink to live.","ex":"Please drink more {w} every day."},{"w":"delicious","phon":"/dɪˈlɪʃəs/","pos":"adj","def":"Having a very pleasant taste.","ex":"This cake is absolutely {w}."},{"w":"sandwich","phon":"/ˈsænwɪtʃ/","pos":"noun","def":"Two pieces of bread with food between them.","ex":"I made a cheese {w} for lunch."}],"Home":[{"w":"house","phon":"/haʊs/","pos":"noun","def":"A building where people live.","ex":"They bought a new {w} near the park."},{"w":"room","phon":"/ruːm/","pos":"noun","def":"A separate space inside a building with its own walls.","ex":"My bedroom is the smallest {w} in the house."},{"w":"kitchen","phon":"/ˈkɪtʃɪn/","pos":"noun","def":"The room in a house where food is cooked.","ex":"She is cooking dinner in the {w}."},{"w":"bathroom","phon":"/ˈbæθruːm/","pos":"noun","def":"A room with a toilet, sink, and usually a bath or shower.","ex":"The {w} is at the end of the hall."},{"w":"bedroom","phon":"/ˈbedruːm/","pos":"noun","def":"A room used for sleeping.","ex":"My {w} has a big window facing the garden."},{"w":"living room","phon":"/ˈlɪvɪŋ ruːm/","pos":"noun","def":"The room in a house where people sit and relax.","ex":"We watch TV together in the {w}."},{"w":"door","phon":"/dɔːr/","pos":"noun","def":"A flat object used to open and close an entrance.","ex":"Please close the {w} when you leave."},{"w":"window","phon":"/ˈwɪndoʊ/","pos":"noun","def":"An opening in a wall, usually with glass, that lets in light.","ex":"Open the {w}; it's hot in here."},{"w":"table","phon":"/ˈteɪbəl/","pos":"noun","def":"A piece of furniture with a flat top and legs.","ex":"We put the food on the {w}."},{"w":"chair","phon":"/tʃer/","pos":"noun","def":"A piece of furniture for one person to sit on.","ex":"Please pull up a {w} and join us."},{"w":"bed","phon":"/bed/","pos":"noun","def":"A piece of furniture used for sleeping.","ex":"I go to {w} at ten o'clock every night."},{"w":"garden","phon":"/ˈɡɑːrdən/","pos":"noun","def":"An area of land near a house used for growing plants.","ex":"My grandmother grows tomatoes in her {w}."},{"w":"clean","phon":"/kliːn/","pos":"adj","def":"Free from dirt or marks.","ex":"Please keep your room {w}."},{"w":"dirty","phon":"/ˈdɜːrti/","pos":"adj","def":"Marked with dirt or not clean.","ex":"Your shoes are really {w} after the hike."}],"School":[{"w":"school","phon":"/skuːl/","pos":"noun","def":"A place where children go to learn.","ex":"My sister walks to {w} every morning."},{"w":"classroom","phon":"/ˈklæsruːm/","pos":"noun","def":"A room in a school where lessons take place.","ex":"Our {w} has twenty desks."},{"w":"teacher","phon":"/ˈtiːtʃər/","pos":"noun","def":"A person whose job is to teach students.","ex":"Our math {w} explains things very clearly."},{"w":"student","phon":"/ˈstjuːdənt/","pos":"noun","def":"A person who is studying at a school or university.","ex":"She is a {w} at the local university."},{"w":"homework","phon":"/ˈhoʊmwɜːrk/","pos":"noun","def":"School work that students do at home.","ex":"I have a lot of {w} to finish tonight."},{"w":"book","phon":"/bʊk/","pos":"noun","def":"A set of printed pages joined together to read.","ex":"She is reading a {w} about space."},{"w":"pencil","phon":"/ˈpensəl/","pos":"noun","def":"A thin tool used for writing or drawing.","ex":"Can I borrow your {w} for a minute?"},{"w":"lesson","phon":"/ˈlesən/","pos":"noun","def":"A period of time used for teaching or learning something.","ex":"Today's {w} is about the water cycle."},{"w":"question","phon":"/ˈkwestʃən/","pos":"noun","def":"A sentence used to ask for information.","ex":"He raised his hand to ask a {w}."},{"w":"answer","phon":"/ˈænsər/","pos":"noun","def":"A reply given to a question.","ex":"I'm not sure I know the right {w}."},{"w":"learn","phon":"/lɜːrn/","pos":"verb","def":"To gain knowledge or skill through study or experience.","ex":"Children {w} to read at a young age."},{"w":"study","phon":"/ˈstʌdi/","pos":"verb","def":"To spend time learning about a subject.","ex":"I need to {w} for my history test."}],"Jobs":[{"w":"work","phon":"/wɜːrk/","pos":"verb","def":"To do a job or activity that takes effort.","ex":"He has to {w} every weekday."},{"w":"job","phon":"/dʒɒb/","pos":"noun","def":"The regular paid work a person does.","ex":"She found a new {w} as a nurse."},{"w":"doctor","phon":"/ˈdɒktər/","pos":"noun","def":"A person trained to treat sick people.","ex":"The {w} checked his heartbeat carefully."},{"w":"nurse","phon":"/nɜːrs/","pos":"noun","def":"A person trained to care for sick or injured people.","ex":"The {w} gave the patient his medicine."},{"w":"engineer","phon":"/ˌendʒɪˈnɪər/","pos":"noun","def":"A person who designs or builds machines, structures, or systems.","ex":"My uncle is an {w} who builds bridges."},{"w":"farmer","phon":"/ˈfɑːrmər/","pos":"noun","def":"A person who owns or manages a farm.","ex":"The {w} woke up early to feed the animals."},{"w":"driver","phon":"/ˈdraɪvər/","pos":"noun","def":"A person who drives a vehicle.","ex":"The bus {w} stopped to let us on."},{"w":"actor","phon":"/ˈæktər/","pos":"noun","def":"A person who performs in films, TV shows, or plays.","ex":"My favorite {w} just won an award."},{"w":"office","phon":"/ˈɒfɪs/","pos":"noun","def":"A room or building where people do business or office work.","ex":"She works at an {w} downtown."},{"w":"business","phon":"/ˈbɪznəs/","pos":"noun","def":"The activity of buying and selling goods or services.","ex":"He started his own {w} last year."}],"Transport":[{"w":"car","phon":"/kɑːr/","pos":"noun","def":"A road vehicle with four wheels, used to carry people.","ex":"We drove to the beach in our {w}."},{"w":"bus","phon":"/bʌs/","pos":"noun","def":"A large road vehicle that carries many passengers.","ex":"I take the {w} to work every day."},{"w":"train","phon":"/treɪn/","pos":"noun","def":"A line of connected vehicles that travels on tracks.","ex":"The {w} leaves the station at nine."},{"w":"airplane","phon":"/ˈerpleɪn/","pos":"noun","def":"A vehicle with wings that flies through the air.","ex":"Our {w} landed safely despite the storm."},{"w":"airport","phon":"/ˈerpɔːrt/","pos":"noun","def":"A place where airplanes take off and land.","ex":"We arrived at the {w} two hours early."},{"w":"bicycle","phon":"/ˈbaɪsɪkəl/","pos":"noun","def":"A two-wheeled vehicle you ride by pedaling.","ex":"He rides his {w} to school every day."},{"w":"taxi","phon":"/ˈtæksi/","pos":"noun","def":"A car that you pay to take you somewhere.","ex":"We called a {w} to the airport."},{"w":"ship","phon":"/ʃɪp/","pos":"noun","def":"A large boat used to carry people or goods across water.","ex":"The {w} sailed across the ocean for days."},{"w":"travel","phon":"/ˈtrævəl/","pos":"verb","def":"To go from one place to another, often a long distance.","ex":"They love to {w} to new countries every year."},{"w":"trip","phon":"/trɪp/","pos":"noun","def":"A journey to a place and back.","ex":"We are planning a {w} to the mountains."}],"Weather & Nature":[{"w":"weather","phon":"/ˈweðər/","pos":"noun","def":"The condition of the sky and air, such as rain or sunshine.","ex":"The {w} is lovely today."},{"w":"rain","phon":"/reɪn/","pos":"noun","def":"Water that falls from clouds in drops.","ex":"We stayed inside because of the {w}."},{"w":"snow","phon":"/snoʊ/","pos":"noun","def":"Soft white frozen drops of water that fall in cold weather.","ex":"The children played in the {w} all afternoon."},{"w":"sunny","phon":"/ˈsʌni/","pos":"adj","def":"Bright with sunlight; not cloudy.","ex":"It's a {w} day, perfect for a picnic."},{"w":"cloudy","phon":"/ˈklaʊdi/","pos":"adj","def":"Covered with clouds.","ex":"The sky looks {w}; it might rain later."},{"w":"cold","phon":"/koʊld/","pos":"adj","def":"Having a low temperature; not warm.","ex":"It's too {w} to swim today."},{"w":"warm","phon":"/wɔːrm/","pos":"adj","def":"Having a comfortably high temperature.","ex":"Wear a jacket, it's not very {w} outside."},{"w":"tree","phon":"/triː/","pos":"noun","def":"A tall plant with a trunk, branches, and leaves.","ex":"We planted a {w} in the backyard."},{"w":"flower","phon":"/ˈflaʊər/","pos":"noun","def":"The colorful part of a plant that often smells nice.","ex":"She picked a {w} from the garden."},{"w":"mountain","phon":"/ˈmaʊntən/","pos":"noun","def":"A very high area of land with steep sides.","ex":"We hiked up the {w} all morning."},{"w":"river","phon":"/ˈrɪvər/","pos":"noun","def":"A large natural stream of water flowing to the sea.","ex":"Fish swim in the {w} near our town."},{"w":"sea","phon":"/siː/","pos":"noun","def":"A large area of salt water.","ex":"We swam in the {w} all afternoon."},{"w":"sky","phon":"/skaɪ/","pos":"noun","def":"The space above the earth where clouds and the sun appear.","ex":"The {w} turned orange at sunset."}],"Animals":[{"w":"dog","phon":"/dɒg/","pos":"noun","def":"A common animal often kept as a pet.","ex":"Our {w} loves to play in the park."},{"w":"cat","phon":"/kæt/","pos":"noun","def":"A small furry animal often kept as a pet.","ex":"The {w} is sleeping on the sofa."},{"w":"bird","phon":"/bɜːrd/","pos":"noun","def":"An animal with feathers and wings that can usually fly.","ex":"A {w} sang outside my window this morning."},{"w":"fish","phon":"/fɪʃ/","pos":"noun","def":"An animal that lives in water and breathes through gills.","ex":"We saw colorful {w} at the aquarium."},{"w":"horse","phon":"/hɔːrs/","pos":"noun","def":"A large animal that people ride or use for farm work.","ex":"She learned to ride a {w} last summer."},{"w":"cow","phon":"/kaʊ/","pos":"noun","def":"A large farm animal kept for milk or meat.","ex":"The {w} grazed quietly in the field."},{"w":"animal","phon":"/ˈænɪməl/","pos":"noun","def":"A living creature, such as a dog, cat, or lion.","ex":"We saw many {w}s at the zoo."}],"Colors & Numbers":[{"w":"red","phon":"/red/","pos":"adj","def":"Having the color of blood or a ripe tomato.","ex":"She wore a {w} dress to the party."},{"w":"blue","phon":"/bluː/","pos":"adj","def":"Having the color of the sky on a clear day.","ex":"His favorite color is {w}."},{"w":"green","phon":"/ɡriːn/","pos":"adj","def":"Having the color of grass or leaves.","ex":"The leaves turned bright {w} in spring."},{"w":"black","phon":"/blæk/","pos":"adj","def":"Having the darkest color, like the night sky.","ex":"He bought a {w} jacket for winter."},{"w":"white","phon":"/waɪt/","pos":"adj","def":"Having the color of fresh snow or milk.","ex":"She painted the walls {w}."},{"w":"number","phon":"/ˈnʌmbər/","pos":"noun","def":"A word or symbol used for counting, such as one or two.","ex":"What's your phone {w}?"},{"w":"first","phon":"/fɜːrst/","pos":"adj","def":"Coming before all others; number one in order.","ex":"This is my {w} time visiting Paris."}],"Describing Things":[{"w":"big","phon":"/bɪɡ/","pos":"adj","def":"Large in size or amount.","ex":"That is a really {w} elephant."},{"w":"small","phon":"/smɔːl/","pos":"adj","def":"Not large in size.","ex":"We live in a {w} apartment."},{"w":"long","phon":"/lɒŋ/","pos":"adj","def":"Having great length or duration.","ex":"It was a {w} flight to Japan."},{"w":"short","phon":"/ʃɔːrt/","pos":"adj","def":"Not long in length, height, or time.","ex":"She has {w} brown hair."},{"w":"new","phon":"/njuː/","pos":"adj","def":"Recently made, bought, or created.","ex":"I bought a {w} pair of shoes."},{"w":"old","phon":"/oʊld/","pos":"adj","def":"Having existed for a long time; not young or new.","ex":"That's a very {w} building in the city center."},{"w":"good","phon":"/ɡʊd/","pos":"adj","def":"Of high quality; pleasant or enjoyable.","ex":"That was a really {w} movie."},{"w":"bad","phon":"/bæd/","pos":"adj","def":"Of poor quality; not pleasant.","ex":"The weather was {w} all weekend."},{"w":"easy","phon":"/ˈiːzi/","pos":"adj","def":"Not difficult; simple to do.","ex":"The test was easier than I expected."},{"w":"difficult","phon":"/ˈdɪfɪkəlt/","pos":"adj","def":"Not easy; requiring effort or skill.","ex":"This math problem is very {w}."},{"w":"fast","phon":"/fæst/","pos":"adj","def":"Moving or able to move quickly.","ex":"That car is incredibly {w}."},{"w":"slow","phon":"/sloʊ/","pos":"adj","def":"Not fast; taking a long time to move or happen.","ex":"The traffic was very {w} this morning."},{"w":"beautiful","phon":"/ˈbjuːtəfəl/","pos":"adj","def":"Very pleasant to look at.","ex":"The sunset over the ocean was {w}."},{"w":"important","phon":"/ɪmˈpɔːrtənt/","pos":"adj","def":"Having great value or significance.","ex":"It's {w} to drink enough water every day."},{"w":"interesting","phon":"/ˈɪntrəstɪŋ/","pos":"adj","def":"Holding your attention; not boring.","ex":"That documentary was really {w}."}],"Time":[{"w":"today","phon":"/təˈdeɪ/","pos":"adv","def":"On this present day.","ex":"What are you doing {w}?"},{"w":"tomorrow","phon":"/təˈmɒroʊ/","pos":"adv","def":"On the day after today.","ex":"We're going to the beach {w}."},{"w":"yesterday","phon":"/ˈjestərdeɪ/","pos":"adv","def":"On the day before today.","ex":"It rained all day {w}."},{"w":"morning","phon":"/ˈmɔːrnɪŋ/","pos":"noun","def":"The early part of the day, before noon.","ex":"I go for a run every {w}."},{"w":"afternoon","phon":"/ˌæftərˈnuːn/","pos":"noun","def":"The part of the day between noon and evening.","ex":"We have a meeting this {w}."},{"w":"evening","phon":"/ˈiːvnɪŋ/","pos":"noun","def":"The part of the day before night.","ex":"We watch TV together in the {w}."},{"w":"night","phon":"/naɪt/","pos":"noun","def":"The dark period of time between evening and morning.","ex":"The stars are bright at {w}."},{"w":"week","phon":"/wiːk/","pos":"noun","def":"A period of seven days.","ex":"I'll see you again next {w}."},{"w":"month","phon":"/mʌnθ/","pos":"noun","def":"One of the twelve periods that a year is divided into.","ex":"We're moving to a new house next {w}."},{"w":"year","phon":"/jɪər/","pos":"noun","def":"A period of twelve months.","ex":"We visit our grandparents once a {w}."},{"w":"always","phon":"/ˈɔːlweɪz/","pos":"adv","def":"At all times; every time.","ex":"She {w} arrives early to meetings."},{"w":"often","phon":"/ˈɒfən/","pos":"adv","def":"Many times; frequently.","ex":"We {w} go for a walk after dinner."},{"w":"never","phon":"/ˈnevər/","pos":"adv","def":"At no time; not ever.","ex":"He {w} eats breakfast in the morning."},{"w":"early","phon":"/ˈɜːrli/","pos":"adv","def":"Before the usual or expected time.","ex":"We arrived {w} for the flight."},{"w":"late","phon":"/leɪt/","pos":"adv","def":"After the usual or expected time.","ex":"Sorry I'm {w}, traffic was terrible."}],"Places":[{"w":"city","phon":"/ˈsɪti/","pos":"noun","def":"A large town where many people live.","ex":"New York is a busy {w}."},{"w":"town","phon":"/taʊn/","pos":"noun","def":"A place where people live, smaller than a city.","ex":"They grew up in a small {w} near the coast."},{"w":"park","phon":"/pɑːrk/","pos":"noun","def":"A public area with grass and trees for relaxing or playing.","ex":"We had a picnic in the {w}."},{"w":"hospital","phon":"/ˈhɒspɪtəl/","pos":"noun","def":"A place where sick or injured people are treated.","ex":"He was taken to the {w} after the accident."},{"w":"restaurant","phon":"/ˈrestrɒnt/","pos":"noun","def":"A place where you pay to eat a meal.","ex":"We had dinner at a nice {w} downtown."},{"w":"shop","phon":"/ʃɒp/","pos":"noun","def":"A small place where you buy things.","ex":"There's a bread {w} on the corner."},{"w":"supermarket","phon":"/ˈsuːpərmɑːrkɪt/","pos":"noun","def":"A large store that sells food and household items.","ex":"I need to buy milk from the {w}."},{"w":"library","phon":"/ˈlaɪbreri/","pos":"noun","def":"A place that keeps books for people to read or borrow.","ex":"She borrowed three books from the {w}."},{"w":"church","phon":"/tʃɜːrtʃ/","pos":"noun","def":"A building used for Christian worship.","ex":"They got married in a small {w}."},{"w":"hotel","phon":"/hoʊˈtel/","pos":"noun","def":"A building where travelers pay to stay overnight.","ex":"We booked a {w} near the beach."}]},"A2":{"Travel & Adventure":[{"w":"adventure","phon":"/ədˈventʃər/","pos":"noun","def":"An exciting or unusual experience.","ex":"Climbing the mountain was a real {w}."},{"w":"abroad","phon":"/əˈbrɒd/","pos":"adv","def":"In or to a foreign country.","ex":"She studied {w} for a year in Spain."},{"w":"campus","phon":"/ˈkæmpəs/","pos":"noun","def":"The land and buildings of a university or college.","ex":"The {w} has a huge library and a sports center."},{"w":"coast","phon":"/koʊst/","pos":"noun","def":"The land next to or close to the sea.","ex":"We drove along the {w} all afternoon."},{"w":"countryside","phon":"/ˈkʌntrisaɪd/","pos":"noun","def":"Land outside of cities and towns, with farms and nature.","ex":"They moved to a quiet house in the {w}."},{"w":"cruise","phon":"/kruːz/","pos":"noun","def":"A vacation trip on a large ship.","ex":"They went on a {w} around the Caribbean."},{"w":"camping","phon":"/ˈkæmpɪŋ/","pos":"noun","def":"The activity of sleeping outdoors in a tent.","ex":"We went {w} by the lake last weekend."},{"w":"castle","phon":"/ˈkæsəl/","pos":"noun","def":"A large old building built to protect people in the past.","ex":"We visited an old {w} during our trip."},{"w":"bus stop","phon":"/bʌs stɒp/","pos":"noun","def":"A place where a bus regularly stops to pick up passengers.","ex":"She waited at the {w} for ten minutes."},{"w":"capital","phon":"/ˈkæpɪtəl/","pos":"noun","def":"The main city of a country, usually where the government is.","ex":"Paris is the {w} of France."}],"Feelings & Personality":[{"w":"confident","phon":"/ˈkɒnfɪdənt/","pos":"adj","def":"Feeling sure about your own abilities.","ex":"She felt {w} before the job interview."},{"w":"confused","phon":"/kənˈfjuːzd/","pos":"adj","def":"Not able to think clearly or understand something.","ex":"I'm {w} about which bus to take."},{"w":"disappointed","phon":"/ˌdɪsəˈpɒɪntɪd/","pos":"adj","def":"Sad because something was not as good as expected.","ex":"He was {w} when the trip was canceled."},{"w":"anxious","phon":"/ˈæŋkʃəs/","pos":"adj","def":"Feeling worried or nervous.","ex":"She felt {w} before her exam results came out."},{"w":"bored","phon":"/bɔːrd/","pos":"adj","def":"Feeling tired and uninterested because there is nothing to do.","ex":"The kids got {w} during the long car ride."},{"w":"brave","phon":"/breɪv/","pos":"adj","def":"Willing to do dangerous or difficult things without fear.","ex":"It was {w} of her to speak up in the meeting."},{"w":"crazy","phon":"/ˈkreɪzi/","pos":"adj","def":"Very strange, foolish, or wildly excited.","ex":"It was {w} how fast the time went by."},{"w":"dizzy","phon":"/ˈdɪzi/","pos":"adj","def":"Feeling like everything is spinning; unsteady.","ex":"I felt {w} after getting off the ride."},{"w":"awful","phon":"/ˈɔːfəl/","pos":"adj","def":"Very bad or unpleasant.","ex":"The weather was {w} all weekend."},{"w":"brilliant","phon":"/ˈbrɪljənt/","pos":"adj","def":"Extremely good, clever, or impressive.","ex":"That was a {w} idea!"},{"w":"amused","phon":"/əˈmjuːzd/","pos":"adj","def":"Finding something funny or entertaining.","ex":"She looked {w} by his silly jokes."},{"w":"annoying","phon":"/əˈnɔɪɪŋ/","pos":"adj","def":"Causing slight anger or irritation.","ex":"That noise outside is really {w}."}],"Food & Cooking":[{"w":"carrot","phon":"/ˈkærət/","pos":"noun","def":"A long orange vegetable that grows underground.","ex":"She chopped a {w} for the salad."},{"w":"chef","phon":"/ʃef/","pos":"noun","def":"A skilled cook, especially the head cook at a restaurant.","ex":"The {w} prepared a delicious three-course meal."},{"w":"cereal","phon":"/ˈsɪəriəl/","pos":"noun","def":"A breakfast food made from grains, often eaten with milk.","ex":"He eats {w} every morning before school."},{"w":"dessert","phon":"/dɪˈzɜːrt/","pos":"noun","def":"Sweet food eaten at the end of a meal.","ex":"We had chocolate cake for {w}."},{"w":"barbecue","phon":"/ˈbɑːrbɪkjuː/","pos":"noun","def":"A meal cooked outdoors over an open fire.","ex":"We're having a {w} in the backyard this Saturday."},{"w":"boil","phon":"/bɔɪl/","pos":"verb","def":"To heat a liquid until it bubbles and turns to steam.","ex":"{w} the pasta for ten minutes."},{"w":"bargain","phon":"/ˈbɑːrɡɪn/","pos":"noun","def":"Something sold at a lower price than usual.","ex":"I found a great {w} on these shoes."},{"w":"cooker","phon":"/ˈkʊkər/","pos":"noun","def":"An appliance used for cooking food, like a stove.","ex":"The {w} has four burners on top."},{"w":"curry","phon":"/ˈkɜːri/","pos":"noun","def":"A dish made with meat or vegetables in a spicy sauce.","ex":"We ordered chicken {w} at the Indian restaurant."},{"w":"crisp","phon":"/krɪsp/","pos":"adj","def":"Pleasantly firm, fresh, or crunchy.","ex":"The apples were {w} and sweet."}],"Home & Furniture":[{"w":"apartment","phon":"/əˈpɑːrtmənt/","pos":"noun","def":"A set of rooms for living in, usually in a larger building.","ex":"They rent a small {w} downtown."},{"w":"balcony","phon":"/ˈbælkəni/","pos":"noun","def":"A platform on the outside of a building, attached to a room.","ex":"We had breakfast on the {w} overlooking the sea."},{"w":"armchair","phon":"/ˈɑːrmtʃer/","pos":"noun","def":"A comfortable chair with supports for your arms.","ex":"He fell asleep in the {w} watching TV."},{"w":"bookshelf","phon":"/ˈbʊkʃelf/","pos":"noun","def":"A piece of furniture with shelves for storing books.","ex":"Her {w} is full of novels and textbooks."},{"w":"blanket","phon":"/ˈblæŋkɪt/","pos":"noun","def":"A large piece of soft cloth used for warmth in bed.","ex":"She pulled the {w} over her shoulders."},{"w":"cupboard","phon":"/ˈkʌbərd/","pos":"noun","def":"A piece of furniture with doors and shelves for storage.","ex":"The plates are kept in the kitchen {w}."},{"w":"drawer","phon":"/drɔːr/","pos":"noun","def":"A sliding box-shaped container in a piece of furniture.","ex":"He keeps his socks in the top {w}."},{"w":"blackboard","phon":"/ˈblækbɔːrd/","pos":"noun","def":"A dark board used in classrooms for writing with chalk.","ex":"The teacher wrote the date on the {w}."}],"School & Study":[{"w":"achieve","phon":"/əˈtʃiːv/","pos":"verb","def":"To successfully complete a goal through effort.","ex":"She worked hard to {w} her dream of becoming a doctor."},{"w":"adjective","phon":"/ˈædʒɪktɪv/","pos":"noun","def":"A word that describes a noun, like 'happy' or 'big'.","ex":"In this sentence, 'blue' is an {w}."},{"w":"beginner","phon":"/bɪˈɡɪnər/","pos":"noun","def":"A person who is just starting to learn something.","ex":"This class is designed for complete {w}s."},{"w":"chapter","phon":"/ˈtʃæptər/","pos":"noun","def":"A separate section of a book.","ex":"I finished the first {w} of the novel last night."},{"w":"composer","phon":"/kəmˈpoʊzər/","pos":"noun","def":"A person who writes music.","ex":"Beethoven is a famous classical {w}."},{"w":"discussion","phon":"/dɪˈskʌʃən/","pos":"noun","def":"A conversation about a particular topic.","ex":"We had a long {w} about the homework."},{"w":"editor","phon":"/ˈedɪtər/","pos":"noun","def":"A person who checks and improves written text before publishing.","ex":"The {w} fixed several mistakes in my essay."},{"w":"education","phon":"/ˌedʒʊˈkeɪʃən/","pos":"noun","def":"The process of teaching and learning, especially at school.","ex":"A good {w} can change your future."},{"w":"author","phon":"/ˈɔːθər/","pos":"noun","def":"A person who writes a book or article.","ex":"She is the {w} of three best-selling novels."},{"w":"difficulty","phon":"/ˈdɪfɪkəlti/","pos":"noun","def":"A problem or something that causes trouble.","ex":"He had {w} understanding the instructions."}],"Daily Life":[{"w":"accident","phon":"/ˈæksɪdənt/","pos":"noun","def":"An unexpected event that causes harm or damage.","ex":"There was a small car {w} on the highway."},{"w":"appointment","phon":"/əˈpɔɪntmənt/","pos":"noun","def":"An arrangement to meet someone at a particular time.","ex":"I have a dentist {w} at three o'clock."},{"w":"alarm clock","phon":"/əˈlɑːrm klɒk/","pos":"noun","def":"A clock that makes a sound to wake you up.","ex":"My {w} didn't go off this morning."},{"w":"comb","phon":"/koʊm/","pos":"noun","def":"A flat tool with teeth used to make hair tidy.","ex":"She ran a {w} through her hair before leaving."},{"w":"budget","phon":"/ˈbʌdʒɪt/","pos":"noun","def":"A plan for how to spend a certain amount of money.","ex":"We need to stick to our monthly {w}."},{"w":"cash","phon":"/kæʃ/","pos":"noun","def":"Money in the form of coins or notes.","ex":"I don't have any {w}, can I pay by card?"},{"w":"bill","phon":"/bɪl/","pos":"noun","def":"A piece of paper showing how much money you owe.","ex":"The electricity {w} arrived in the mail today."},{"w":"customer","phon":"/ˈkʌstəmər/","pos":"noun","def":"A person who buys goods or services from a shop or business.","ex":"The shop was full of {w}s during the sale."},{"w":"convenient","phon":"/kənˈviːniənt/","pos":"adj","def":"Easy to use or fitting your needs well.","ex":"It's very {w} to have a supermarket nearby."},{"w":"clerk","phon":"/klɜːrk/","pos":"noun","def":"A person who works in an office or shop dealing with records or sales.","ex":"The {w} helped me find the right size."},{"w":"calendar","phon":"/ˈkælɪndər/","pos":"noun","def":"A chart showing the days, weeks, and months of a year.","ex":"She marked the date on the {w}."},{"w":"alarm","phon":"/əˈlɑːrm/","pos":"noun","def":"A device or sound that warns people of danger or wakes them up.","ex":"The fire {w} went off during class."},{"w":"daily","phon":"/ˈdeɪli/","pos":"adj","def":"Happening every day.","ex":"Reading is part of my {w} routine."},{"w":"downtown","phon":"/ˌdaʊnˈtaʊn/","pos":"adv","def":"In or toward the central area of a city.","ex":"We're meeting {w} for lunch."},{"w":"drugstore","phon":"/ˈdrʌɡstɔːr/","pos":"noun","def":"A shop that sells medicine and other everyday items.","ex":"I need to pick up medicine from the {w}."},{"w":"degree","phon":"/dɪˈɡriː/","pos":"noun","def":"A unit for measuring temperature, or a university qualification.","ex":"It's thirty {w}s outside today."},{"w":"deal","phon":"/diːl/","pos":"noun","def":"An agreement, especially in business.","ex":"They made a {w} to share the profits."},{"w":"delay","phon":"/dɪˈleɪ/","pos":"noun","def":"A period of time when something is made to happen later.","ex":"There was a two-hour {w} at the airport."}],"Communication":[{"w":"argue","phon":"/ˈɑːrɡjuː/","pos":"verb","def":"To disagree with someone, often loudly.","ex":"The two brothers always {w} about whose turn it is."},{"w":"apologize","phon":"/əˈpɒlədʒaɪz/","pos":"verb","def":"To say you are sorry for something.","ex":"He called to {w} for being late."},{"w":"appreciate","phon":"/əˈpriːʃieɪt/","pos":"verb","def":"To be grateful for something.","ex":"I really {w} your help with this project."},{"w":"complain","phon":"/kəmˈpleɪn/","pos":"verb","def":"To say you are unhappy or unsatisfied about something.","ex":"She called to {w} about the broken product."},{"w":"admit","phon":"/ədˈmɪt/","pos":"verb","def":"To agree, often unwillingly, that something is true.","ex":"He had to {w} that he made a mistake."},{"w":"advise","phon":"/ədˈvaɪz/","pos":"verb","def":"To give someone suggestions about what they should do.","ex":"The doctor {w}d her to rest for a week."},{"w":"claim","phon":"/kleɪm/","pos":"verb","def":"To say that something is true, without proof.","ex":"He {w}s he saw a UFO last night."},{"w":"disagree","phon":"/ˌdɪsəˈɡriː/","pos":"verb","def":"To have a different opinion from someone.","ex":"I'm afraid I {w} with that decision."},{"w":"concentrate","phon":"/ˈkɒnsəntreɪt/","pos":"verb","def":"To give all your attention to one thing.","ex":"It's hard to {w} with all this noise."}],"Sports & Hobbies":[{"w":"badminton","phon":"/ˈbædmɪntən/","pos":"noun","def":"A sport played with rackets and a small light shuttlecock.","ex":"We played {w} in the park yesterday."},{"w":"championship","phon":"/ˈtʃæmpiənʃɪp/","pos":"noun","def":"A competition to find the best player or team.","ex":"Their team won the national {w} last year."},{"w":"chess","phon":"/tʃes/","pos":"noun","def":"A board game played by two people with pieces like kings and queens.","ex":"My grandfather taught me how to play {w}."},{"w":"climbing","phon":"/ˈklaɪmɪŋ/","pos":"noun","def":"The sport of going up mountains, hills, or rock walls.","ex":"Rock {w} is his favorite weekend activity."},{"w":"cycling","phon":"/ˈsaɪklɪŋ/","pos":"noun","def":"The activity of riding a bicycle.","ex":"{w} is a great way to stay fit."},{"w":"competition","phon":"/ˌkɒmpəˈtɪʃən/","pos":"noun","def":"An event where people try to win against others.","ex":"She entered a baking {w} at the fair."},{"w":"cricket","phon":"/ˈkrɪkɪt/","pos":"noun","def":"A sport played with a bat and ball between two teams.","ex":"{w} is very popular in England and India."}],"Describing & Comparing":[{"w":"crowded","phon":"/ˈkraʊdɪd/","pos":"adj","def":"Full of people.","ex":"The bus was so {w} I had to stand."},{"w":"comfortable","phon":"/ˈkʌmftəbəl/","pos":"adj","def":"Giving a pleasant feeling of ease.","ex":"This chair is very {w} to sit in."},{"w":"common","phon":"/ˈkɒmən/","pos":"adj","def":"Happening often or found in many places.","ex":"It's a {w} mistake for beginners to make."},{"w":"creative","phon":"/kriˈeɪtɪv/","pos":"adj","def":"Having good imagination and original ideas.","ex":"She came up with a really {w} solution."},{"w":"dangerous","phon":"/ˈdeɪndʒərəs/","pos":"adj","def":"Likely to cause harm or injury.","ex":"Swimming alone in the ocean can be {w}."},{"w":"developed","phon":"/dɪˈveləpt/","pos":"adj","def":"Having modern industry and a strong economy.","ex":"Japan is a highly {w} country."},{"w":"differently","phon":"/ˈdɪfrəntli/","pos":"adv","def":"In a way that is not the same; in another manner.","ex":"Everyone learns {w}, so be patient with yourself."},{"w":"dishonest","phon":"/dɪsˈɒnɪst/","pos":"adj","def":"Not telling the truth; likely to lie or cheat.","ex":"It was {w} of him to hide the mistake."},{"w":"elderly","phon":"/ˈeldərli/","pos":"adj","def":"Old, especially used to describe people respectfully.","ex":"We should help {w} people cross the street."},{"w":"acceptable","phon":"/əkˈseptəbəl/","pos":"adj","def":"Good enough to be allowed or approved of.","ex":"That kind of behavior is not {w} at school."},{"w":"deep","phon":"/diːp/","pos":"adj","def":"Going far down from the top or surface.","ex":"The lake is very {w} in the middle."},{"w":"double","phon":"/ˈdʌbəl/","pos":"adj","def":"Twice as much or as many.","ex":"He ordered a {w} portion of fries."},{"w":"basic","phon":"/ˈbeɪsɪk/","pos":"adj","def":"Simple and forming the necessary foundation of something.","ex":"He only knows {w} English phrases."},{"w":"appropriate","phon":"/əˈproʊpriət/","pos":"adj","def":"Suitable or correct for a particular situation.","ex":"Please wear {w} clothes for the interview."},{"w":"attractive","phon":"/əˈtræktɪv/","pos":"adj","def":"Pleasing to look at; appealing.","ex":"The store has an {w} window display."},{"w":"average","phon":"/ˈævərɪdʒ/","pos":"adj","def":"Typical or usual; calculated by adding numbers and dividing.","ex":"The {w} temperature in July is 30 degrees."}],"Nature & Science":[{"w":"earthquake","phon":"/ˈɜːrθkweɪk/","pos":"noun","def":"A sudden shaking of the ground caused by movement underground.","ex":"The {w} damaged several buildings in the city."},{"w":"atom","phon":"/ˈætəm/","pos":"noun","def":"The smallest unit of a chemical element.","ex":"Everything is made up of tiny {w}s."},{"w":"continent","phon":"/ˈkɒntɪnənt/","pos":"noun","def":"One of the seven large land areas of the Earth.","ex":"Africa is the second largest {w} in the world."},{"w":"desert","phon":"/ˈdezərt/","pos":"noun","def":"A large area of dry land, often covered in sand.","ex":"The Sahara is the largest hot {w} in the world."},{"w":"earth","phon":"/ɜːrθ/","pos":"noun","def":"The planet we live on.","ex":"The {w} takes a year to go around the sun."},{"w":"creature","phon":"/ˈkriːtʃər/","pos":"noun","def":"A living being, especially an animal.","ex":"Strange sea {w}s live deep in the ocean."},{"w":"chimpanzee","phon":"/ˌtʃɪmpænˈziː/","pos":"noun","def":"A small intelligent ape found in Africa.","ex":"The {w} used a stick to get food."},{"w":"dinosaur","phon":"/ˈdaɪnəsɔːr/","pos":"noun","def":"A large reptile that lived millions of years ago.","ex":"Kids love learning about {w}s in school."},{"w":"astronaut","phon":"/ˈæstrənɔːt/","pos":"noun","def":"A person trained to travel and work in space.","ex":"The {w} spent six months on the space station."}],"Technology":[{"w":"download","phon":"/ˌdaʊnˈloʊd/","pos":"verb","def":"To copy data from the internet onto a device.","ex":"I need to {w} the app before the trip."},{"w":"digital camera","phon":"/ˈdɪdʒɪtəl ˈkæmərə/","pos":"noun","def":"A camera that stores photos electronically instead of on film.","ex":"She took hundreds of photos with her {w}."},{"w":"battery","phon":"/ˈbætəri/","pos":"noun","def":"A device that stores electrical power.","ex":"My phone {w} is almost dead."},{"w":"automatic","phon":"/ˌɔːtəˈmætɪk/","pos":"adj","def":"Operating by itself, without a person controlling it.","ex":"The doors open {w}ally when you walk near them."},{"w":"display","phon":"/dɪˈspleɪ/","pos":"noun","def":"A screen that shows information or images.","ex":"The phone's {w} cracked when it fell."},{"w":"clone","phon":"/kloʊn/","pos":"noun","def":"An exact copy of a living thing, made artificially.","ex":"Scientists created a {w} of the sheep."},{"w":"contact","phon":"/ˈkɒntækt/","pos":"verb","def":"To communicate with someone, especially by phone or message.","ex":"Please {w} me if you have any questions."}],"Work & Money":[{"w":"businessman","phon":"/ˈbɪznəsmæn/","pos":"noun","def":"A man who works in business, especially in management.","ex":"Her father is a successful {w}."},{"w":"businesswoman","phon":"/ˈbɪznəswʊmən/","pos":"noun","def":"A woman who works in business, especially in management.","ex":"She became a {w} after finishing university."},{"w":"boss","phon":"/bɒs/","pos":"noun","def":"The person in charge at work.","ex":"My {w} asked me to finish the report by Friday."},{"w":"chairman","phon":"/ˈtʃermən/","pos":"noun","def":"The person who leads a company or meeting.","ex":"The {w} opened the meeting with a short speech."},{"w":"commitment","phon":"/kəˈmɪtmənt/","pos":"noun","def":"A promise or strong dedication to something.","ex":"Training every day shows real {w}."},{"w":"committee","phon":"/kəˈmɪti/","pos":"noun","def":"A group of people chosen to discuss or decide something.","ex":"The {w} will announce the winner tomorrow."},{"w":"company","phon":"/ˈkʌmpəni/","pos":"noun","def":"A business that sells goods or services.","ex":"She works for a large technology {w}."},{"w":"cost","phon":"/kɒst/","pos":"noun","def":"The amount of money needed to buy or do something.","ex":"The {w} of living has gone up this year."},{"w":"credit","phon":"/ˈkredɪt/","pos":"noun","def":"An arrangement to pay for something later.","ex":"He bought the laptop on {w}."},{"w":"cheque","phon":"/tʃek/","pos":"noun","def":"A printed form used to pay money from a bank account.","ex":"She wrote a {w} for the rent."}],"Body & Health":[{"w":"belly","phon":"/ˈbeli/","pos":"noun","def":"The stomach or front part of the body below the chest.","ex":"My {w} hurts after eating too much."},{"w":"ankle","phon":"/ˈæŋkəl/","pos":"noun","def":"The joint connecting the foot to the leg.","ex":"She twisted her {w} while running."},{"w":"blood","phon":"/blʌd/","pos":"noun","def":"The red liquid that flows through the body.","ex":"The doctor took a sample of his {w}."},{"w":"chest","phon":"/tʃest/","pos":"noun","def":"The front part of the body between the neck and stomach.","ex":"He felt a sharp pain in his {w}."},{"w":"chin","phon":"/tʃɪn/","pos":"noun","def":"The lowest part of the face, below the mouth.","ex":"He rubbed his {w} while thinking."},{"w":"cheek","phon":"/tʃiːk/","pos":"noun","def":"The soft part of the face below the eye.","ex":"She kissed her grandmother on the {w}."},{"w":"dentist","phon":"/ˈdentɪst/","pos":"noun","def":"A doctor who treats problems with teeth.","ex":"I have a {w} appointment tomorrow morning."},{"w":"asleep","phon":"/əˈsliːp/","pos":"adj","def":"In a state of sleep.","ex":"The baby fell {w} during the car ride."}]},"B1":{"Personality & Character":[{"w":"ambitious","phon":"/æmˈbɪʃəs/","pos":"adj","def":"Having a strong desire for success or achievement.","ex":"She is an {w} entrepreneur with big plans."},{"w":"aggressive","phon":"/əˈɡresɪv/","pos":"adj","def":"Ready to attack or behave in a forceful, hostile way.","ex":"The dog became {w} when strangers approached."},{"w":"adorable","phon":"/əˈdɔːrəbəl/","pos":"adj","def":"Very lovable or charming.","ex":"Their new puppy is absolutely {w}."},{"w":"ashamed","phon":"/əˈʃeɪmd/","pos":"adj","def":"Feeling embarrassed or guilty about something.","ex":"He felt {w} after lying to his friend."},{"w":"amazed","phon":"/əˈmeɪzd/","pos":"adj","def":"Filled with great surprise or wonder.","ex":"We were {w} by the size of the waterfall."},{"w":"anxiety","phon":"/æŋˈzaɪəti/","pos":"noun","def":"A feeling of worry or nervousness about something uncertain.","ex":"Public speaking causes her a lot of {w}."},{"w":"affection","phon":"/əˈfekʃən/","pos":"noun","def":"A feeling of fondness or love for someone.","ex":"He showed great {w} toward his younger siblings."},{"w":"abnormal","phon":"/æbˈnɔːrməl/","pos":"adj","def":"Different from what is usual or expected, often in a concerning way.","ex":"The doctor noticed an {w} heart rate."},{"w":"absolute","phon":"/ˈæbsəluːt/","pos":"adj","def":"Complete and total; not limited in any way.","ex":"There was {w} silence in the room."},{"w":"amusing","phon":"/əˈmjuːzɪŋ/","pos":"adj","def":"Funny or entertaining.","ex":"He told an {w} story about his childhood."}],"Work & Career":[{"w":"accountant","phon":"/əˈkaʊntənt/","pos":"noun","def":"A person whose job is to manage financial records.","ex":"Our {w} prepares the company's taxes every year."},{"w":"architect","phon":"/ˈɑːrkɪtekt/","pos":"noun","def":"A person who designs buildings.","ex":"The {w} showed us plans for the new library."},{"w":"administration","phon":"/ədˌmɪnɪˈstreɪʃən/","pos":"noun","def":"The work of managing and organizing a business or institution.","ex":"She handles all the office {w}."},{"w":"advance","phon":"/ədˈvæns/","pos":"verb","def":"To move forward or make progress.","ex":"Technology continues to {w} every year."},{"w":"appoint","phon":"/əˈpɔɪnt/","pos":"verb","def":"To officially choose someone for a job or role.","ex":"The board {w}ed a new director last week."},{"w":"acquaintance","phon":"/əˈkweɪntəns/","pos":"noun","def":"A person you know but who isn't a close friend.","ex":"He's just a business {w}, not a close friend."},{"w":"career","phon":"/kəˈrɪər/","pos":"noun","def":"The series of jobs a person has throughout their working life.","ex":"She built a successful {w} in marketing."},{"w":"employment","phon":"/ɪmˈplɔɪmənt/","pos":"noun","def":"The state of having paid work.","ex":"He found full-time {w} at a local factory."},{"w":"profession","phon":"/prəˈfeʃən/","pos":"noun","def":"A job that requires special training or education.","ex":"Teaching is a respected {w}."},{"w":"promote","phon":"/prəˈmoʊt/","pos":"verb","def":"To raise someone to a higher position at work.","ex":"They {w}d her to team leader after one year."},{"w":"qualified","phon":"/ˈkwɒlɪfaɪd/","pos":"adj","def":"Having the right skills or knowledge for a job.","ex":"She is fully {w} to teach high school math."}],"Environment & Nature":[{"w":"agriculture","phon":"/ˈæɡrɪkʌltʃər/","pos":"noun","def":"The practice of farming, including growing crops and raising animals.","ex":"{w} is a major industry in this region."},{"w":"atmosphere","phon":"/ˈætməsfɪər/","pos":"noun","def":"The layer of gases surrounding the Earth, or the mood of a place.","ex":"Pollution is damaging the Earth's {w}."},{"w":"cliff","phon":"/klɪf/","pos":"noun","def":"A high steep rock face, often by the sea.","ex":"We watched the sunset from the {w}."},{"w":"disaster","phon":"/dɪˈzæstər/","pos":"noun","def":"A sudden event that causes great damage or suffering.","ex":"The flood was a natural {w} for the village."},{"w":"fuel","phon":"/ˈfjuːəl/","pos":"noun","def":"A substance burned to produce energy, like gas or oil.","ex":"The car ran out of {w} on the highway."},{"w":"habitat","phon":"/ˈhæbɪtæt/","pos":"noun","def":"The natural home of a plant or animal.","ex":"Deforestation destroys the {w} of many species."},{"w":"ocean","phon":"/ˈoʊʃən/","pos":"noun","def":"A very large area of sea.","ex":"The Pacific {w} is the largest in the world."},{"w":"resource","phon":"/ˈriːsɔːrs/","pos":"noun","def":"A supply of something useful, like water or energy.","ex":"Clean water is a precious natural {w}."},{"w":"waste","phon":"/weɪst/","pos":"noun","def":"Material that is no longer needed and thrown away.","ex":"The factory produces a lot of {w}."},{"w":"wildlife","phon":"/ˈwaɪldlaɪf/","pos":"noun","def":"Wild animals living in their natural environment.","ex":"The national park protects local {w}."}],"Communication & Media":[{"w":"announce","phon":"/əˈnaʊns/","pos":"verb","def":"To make something publicly known.","ex":"They will {w} the winner tonight."},{"w":"broadcast","phon":"/ˈbrɔːdkæst/","pos":"verb","def":"To send out a program on television or radio.","ex":"The match will be {w} live tonight."},{"w":"channel","phon":"/ˈtʃænəl/","pos":"noun","def":"A specific television or radio station.","ex":"She switched to a news {w}."},{"w":"headline","phon":"/ˈhedlaɪn/","pos":"noun","def":"The title of a newspaper article, usually in large print.","ex":"The {w} announced the surprising election result."},{"w":"interview","phon":"/ˈɪntərvjuː/","pos":"noun","def":"A meeting where someone is asked questions, often for a job or news.","ex":"She has a job {w} tomorrow morning."},{"w":"journalist","phon":"/ˈdʒɜːrnəlɪst/","pos":"noun","def":"A person who writes news articles for newspapers or websites.","ex":"The {w} reported live from the scene."},{"w":"press","phon":"/pres/","pos":"noun","def":"Newspapers and journalists in general.","ex":"The {w} gathered outside the courthouse."},{"w":"publisher","phon":"/ˈpʌblɪʃər/","pos":"noun","def":"A company or person that produces books, magazines, or news.","ex":"The book was released by a major {w}."},{"w":"signal","phon":"/ˈsɪɡnəl/","pos":"noun","def":"A sign or sound that gives information or a warning.","ex":"My phone has no {w} in this area."}],"Action Verbs":[{"w":"abandon","phon":"/əˈbændən/","pos":"verb","def":"To leave something or someone permanently.","ex":"They had to {w} the car in the snow."},{"w":"accomplish","phon":"/əˈkʌmplɪʃ/","pos":"verb","def":"To successfully finish or achieve something.","ex":"She {w}ed her goal of running a marathon."},{"w":"accuse","phon":"/əˈkjuːz/","pos":"verb","def":"To say that someone has done something wrong.","ex":"They {w}d him of stealing the money."},{"w":"acquire","phon":"/əˈkwaɪər/","pos":"verb","def":"To gain or get something.","ex":"He {w}d a large art collection over the years."},{"w":"adapt","phon":"/əˈdæpt/","pos":"verb","def":"To change your behavior to suit a new situation.","ex":"It took her a while to {w} to the new country."},{"w":"affect","phon":"/əˈfekt/","pos":"verb","def":"To have an influence or effect on something.","ex":"The weather can {w} your mood."},{"w":"afford","phon":"/əˈfɔːrd/","pos":"verb","def":"To have enough money or time to do something.","ex":"We can't {w} a vacation this year."},{"w":"approve","phon":"/əˈpruːv/","pos":"verb","def":"To officially agree to or accept something.","ex":"The bank {w}d our loan application."},{"w":"arrange","phon":"/əˈreɪndʒ/","pos":"verb","def":"To plan or organize something in advance.","ex":"Let's {w} a meeting for next week."},{"w":"assign","phon":"/əˈsaɪn/","pos":"verb","def":"To give someone a task or responsibility.","ex":"The teacher {w}ed extra homework for the weekend."},{"w":"assist","phon":"/əˈsɪst/","pos":"verb","def":"To help someone do something.","ex":"Could you {w} me with these heavy bags?"}],"Health & Lifestyle":[{"w":"alcohol","phon":"/ˈælkəhɒl/","pos":"noun","def":"A type of drink that can make people feel drunk, like beer or wine.","ex":"He doesn't drink {w} at all."},{"w":"allergic","phon":"/əˈlɜːrdʒɪk/","pos":"adj","def":"Having a bad physical reaction to certain foods or substances.","ex":"I'm {w} to peanuts."},{"w":"ache","phon":"/eɪk/","pos":"noun","def":"A continuous dull pain in part of the body.","ex":"I have a terrible head{w} today."},{"w":"aerobics","phon":"/eəˈroʊbɪks/","pos":"noun","def":"Physical exercise done to music to improve fitness.","ex":"She does {w} three times a week."},{"w":"appetite","phon":"/ˈæpɪtaɪt/","pos":"noun","def":"A desire or feeling of wanting to eat.","ex":"He lost his {w} after the bad news."},{"w":"aspirin","phon":"/ˈæsprɪn/","pos":"noun","def":"A common medicine used to relieve pain.","ex":"She took an {w} for her headache."}],"Emergencies & Safety":[{"w":"ambulance","phon":"/ˈæmbjələns/","pos":"noun","def":"A vehicle used to take sick or injured people to the hospital.","ex":"They called an {w} right after the accident."},{"w":"alarm","phon":"/əˈlɑːrm/","pos":"noun","def":"A warning sound or signal of danger.","ex":"The fire {w} rang during the meeting."},{"w":"arrest","phon":"/əˈrest/","pos":"verb","def":"To take someone into police custody.","ex":"The police {w}ed two suspects last night."},{"w":"arrow","phon":"/ˈæroʊ/","pos":"noun","def":"A symbol or object pointing in a direction.","ex":"Follow the {w}s to find the exit."},{"w":"army","phon":"/ˈɑːrmi/","pos":"noun","def":"A large organized group of soldiers trained to fight.","ex":"He joined the {w} after finishing high school."},{"w":"air force","phon":"/er fɔːrs/","pos":"noun","def":"The branch of the military that uses aircraft.","ex":"Her brother serves in the {w}."}],"Education & Learning":[{"w":"agenda","phon":"/əˈdʒendə/","pos":"noun","def":"A list of items to be discussed at a meeting.","ex":"The first item on the {w} is the budget."},{"w":"academic","phon":"/ˌækəˈdemɪk/","pos":"adj","def":"Relating to schools, colleges, and education.","ex":"She has a strong {w} record."},{"w":"academy","phon":"/əˈkædəmi/","pos":"noun","def":"A school for special training, such as in music or sports.","ex":"He trains at a football {w} every weekend."},{"w":"alphabet","phon":"/ˈælfəbet/","pos":"noun","def":"The set of letters used to write a language.","ex":"The English {w} has twenty-six letters."},{"w":"analysis","phon":"/əˈnæləsɪs/","pos":"noun","def":"A detailed examination of something.","ex":"The report includes an {w} of the sales figures."},{"w":"arithmetic","phon":"/əˈrɪθmətɪk/","pos":"noun","def":"The branch of math dealing with basic calculations.","ex":"We practiced basic {w} in primary school."},{"w":"assignment","phon":"/əˈsaɪnmənt/","pos":"noun","def":"A task or piece of work given to someone, often at school.","ex":"I need to finish my {w} before Monday."}],"Useful Phrases":[{"w":"according to","phon":"/əˈkɔːrdɪŋ tuː/","pos":"prep","def":"As stated or shown by something.","ex":"{w} the report, sales increased last month."},{"w":"afterward","phon":"/ˈæftərwərd/","pos":"adv","def":"At a later time; after something else has happened.","ex":"We had dinner, and {w} we watched a movie."},{"w":"alike","phon":"/əˈlaɪk/","pos":"adv","def":"In the same or a similar way.","ex":"The twins look exactly {w}."},{"w":"altogether","phon":"/ˌɔːltəˈɡeðər/","pos":"adv","def":"Completely; including everything.","ex":"The trip cost five hundred dollars {w}."},{"w":"aloud","phon":"/əˈlaʊd/","pos":"adv","def":"In a voice that can be heard, not silently.","ex":"She read the letter {w} to the class."},{"w":"approximately","phon":"/əˈprɒksɪmətli/","pos":"adv","def":"About; close to a particular number or amount.","ex":"The journey takes {w} two hours."},{"w":"aside","phon":"/əˈsaɪd/","pos":"adv","def":"To one side; out of the way.","ex":"She put her books {w} and stood up."},{"w":"anyhow","phon":"/ˈenihaʊ/","pos":"adv","def":"In any case; regardless.","ex":"It's late, but let's go {w}."}],"Describing the World":[{"w":"abundant","phon":"/əˈbʌndənt/","pos":"adj","def":"Existing in large quantities; plentiful.","ex":"Fish were {w} in the river that summer."},{"w":"accurate","phon":"/ˈækjərət/","pos":"adj","def":"Correct and exact; free from errors.","ex":"The map gave very {w} directions."},{"w":"alternative","phon":"/ɔːlˈtɜːrnətɪv/","pos":"adj","def":"Available as another option or possibility.","ex":"We need an {w} plan in case it rains."},{"w":"annual","phon":"/ˈænjuəl/","pos":"adj","def":"Happening once every year.","ex":"The company holds an {w} conference in March."},{"w":"antique","phon":"/ænˈtiːk/","pos":"adj","def":"Very old and often valuable.","ex":"She inherited an {w} clock from her grandmother."},{"w":"artistic","phon":"/ɑːrˈtɪstɪk/","pos":"adj","def":"Having or showing skill and creativity in art.","ex":"He has a very {w} way of arranging flowers."},{"w":"accessible","phon":"/əkˈsesəbəl/","pos":"adj","def":"Able to be reached, entered, or used easily.","ex":"The building is {w} for wheelchairs."}],"Logic & Reasoning":[{"w":"behave","phon":"/bɪˈheɪv/","pos":"verb","def":"To act in a particular way.","ex":"The children {w}d well during the trip."},{"w":"belief","phon":"/bɪˈliːf/","pos":"noun","def":"A feeling that something is true or real.","ex":"It's her {w} that hard work always pays off."},{"w":"benefit","phon":"/ˈbenɪfɪt/","pos":"noun","def":"An advantage or helpful result from something.","ex":"Regular exercise has many health {w}s."},{"w":"capable","phon":"/ˈkeɪpəbəl/","pos":"adj","def":"Having the ability or skill to do something.","ex":"She is fully {w} of handling the project alone."},{"w":"category","phon":"/ˈkætəɡɔːri/","pos":"noun","def":"A group of things that share similar features.","ex":"This book falls into the fantasy {w}."},{"w":"combine","phon":"/kəmˈbaɪn/","pos":"verb","def":"To join two or more things together.","ex":"{w} the flour and sugar in a bowl."},{"w":"comparison","phon":"/kəmˈpærɪsən/","pos":"noun","def":"An examination of the similarities or differences between things.","ex":"There's no {w} between the two restaurants."},{"w":"complex","phon":"/ˈkɒmpleks/","pos":"adj","def":"Made of many connected parts; difficult to understand.","ex":"The instructions were too {w} for beginners."},{"w":"conclude","phon":"/kənˈkluːd/","pos":"verb","def":"To decide something after considering all the facts.","ex":"Scientists {w}d that the drug was safe."},{"w":"conclusion","phon":"/kənˈkluːʒən/","pos":"noun","def":"The final part of something, or a decision reached after thinking.","ex":"We came to the {w} that the plan wouldn't work."},{"w":"confirm","phon":"/kənˈfɜːrm/","pos":"verb","def":"To say that something is definitely true or will happen.","ex":"Please {w} your reservation by email."},{"w":"conflict","phon":"/ˈkɒnflɪkt/","pos":"noun","def":"A serious disagreement or fight.","ex":"There was a {w} between the two neighbors."}],"Crime & Society":[{"w":"connect","phon":"/kəˈnekt/","pos":"verb","def":"To join or link two things together.","ex":"This cable {w}s the laptop to the printer."},{"w":"considerable","phon":"/kənˈsɪdərəbəl/","pos":"adj","def":"Large enough to be important or noticeable.","ex":"They spent a {w} amount of time on the report."},{"w":"contain","phon":"/kənˈteɪn/","pos":"verb","def":"To have something inside.","ex":"This box {w}s old photographs."},{"w":"contribute","phon":"/kənˈtrɪbjuːt/","pos":"verb","def":"To give something, especially money, help, or ideas.","ex":"Everyone {w}d to the farewell gift."},{"w":"convince","phon":"/kənˈvɪns/","pos":"verb","def":"To make someone believe or agree to do something.","ex":"She {w}d her parents to let her travel."},{"w":"criminal","phon":"/ˈkrɪmɪnəl/","pos":"noun","def":"A person who has committed a crime.","ex":"The {w} was caught by the police the next day."},{"w":"chemical","phon":"/ˈkemɪkəl/","pos":"noun","def":"A substance used in or produced by chemistry.","ex":"The factory uses dangerous {w}s."},{"w":"chemistry","phon":"/ˈkemɪstri/","pos":"noun","def":"The scientific study of substances and how they react.","ex":"She loves {w} class because of the experiments."},{"w":"calm","phon":"/kɑːm/","pos":"adj","def":"Not nervous, upset, or excited; peaceful.","ex":"Try to stay {w} during the interview."},{"w":"cancel","phon":"/ˈkænsəl/","pos":"verb","def":"To officially stop a planned event from happening.","ex":"They had to {w} the concert due to rain."}]},"B2":{"Personality & Character":[{"w":"arrogant","phon":"/ˈærəɡənt/","pos":"adj","def":"Having an exaggerated sense of your own importance.","ex":"His {w} attitude made him unpopular with coworkers."},{"w":"articulate","phon":"/ɑːrˈtɪkjələt/","pos":"adj","def":"Able to express ideas clearly and effectively.","ex":"She gave an {w} speech about climate policy."},{"w":"adventurous","phon":"/ədˈventʃərəs/","pos":"adj","def":"Willing to try new and exciting experiences.","ex":"He's always been {w}, traveling to remote places alone."},{"w":"affectionate","phon":"/əˈfekʃənət/","pos":"adj","def":"Showing love or fondness openly.","ex":"She gave her grandmother an {w} hug."},{"w":"astonished","phon":"/əˈstɒnɪʃt/","pos":"adj","def":"Extremely surprised.","ex":"We were {w} by how quickly the work was finished."},{"w":"attentive","phon":"/əˈtentɪv/","pos":"adj","def":"Paying close attention; thoughtful and considerate.","ex":"The waiter was {w} throughout our meal."},{"w":"bad-tempered","phon":"/ˌbædˈtempərd/","pos":"adj","def":"Easily annoyed or angered.","ex":"He gets {w} when he hasn't slept enough."},{"w":"bossy","phon":"/ˈbɒsi/","pos":"adj","def":"Always telling people what to do, in an annoying way.","ex":"My older sister is so {w} sometimes."},{"w":"bizarre","phon":"/bɪˈzɑːr/","pos":"adj","def":"Very strange or unusual.","ex":"He told us a {w} story about his dream."},{"w":"benevolent","phon":"/bəˈnevələnt/","pos":"adj","def":"Kind and generous, wanting to do good for others.","ex":"The {w} millionaire donated to several charities."},{"w":"charming","phon":"/ˈtʃɑːrmɪŋ/","pos":"adj","def":"Pleasant and attractive in a way that wins people over.","ex":"He has a {w} smile that puts people at ease."},{"w":"clumsy","phon":"/ˈklʌmzi/","pos":"adj","def":"Moving awkwardly and often knocking things over.","ex":"I'm too {w} to be a good dancer."}],"Abstract Ideas":[{"w":"absurd","phon":"/əbˈsɜːrd/","pos":"adj","def":"Completely unreasonable or ridiculous.","ex":"It's {w} to expect us to finish this in one day."},{"w":"ambiguous","phon":"/æmˈbɪɡjuəs/","pos":"adj","def":"Open to more than one interpretation; unclear.","ex":"His answer was so {w} that nobody understood his real opinion."},{"w":"ambiguity","phon":"/ˌæmbɪˈɡjuːəti/","pos":"noun","def":"The quality of having more than one possible meaning.","ex":"The contract was rewritten to remove any {w}."},{"w":"analogy","phon":"/əˈnælədʒi/","pos":"noun","def":"A comparison between two things to explain an idea.","ex":"The teacher used a simple {w} to explain gravity."},{"w":"assumption","phon":"/əˈsʌmpʃən/","pos":"noun","def":"Something believed to be true without proof.","ex":"We made the {w} that the store would be open."},{"w":"assurance","phon":"/əˈʃʊərəns/","pos":"noun","def":"A confident statement intended to give someone confidence.","ex":"She gave us her {w} that the project would finish on time."},{"w":"attribute","phon":"/ˈætrɪbjuːt/","pos":"noun","def":"A quality or feature of someone or something.","ex":"Patience is an important {w} for a teacher."},{"w":"coherent","phon":"/koʊˈhɪərənt/","pos":"adj","def":"Clear, logical, and easy to follow.","ex":"He gave a {w} explanation of the accident."},{"w":"compatible","phon":"/kəmˈpætəbəl/","pos":"adj","def":"Able to exist or work together without conflict.","ex":"The new software isn't {w} with older computers."},{"w":"complexity","phon":"/kəmˈpleksəti/","pos":"noun","def":"The state of being complicated or having many connected parts.","ex":"The {w} of the legal system surprised her."},{"w":"comprehensive","phon":"/ˌkɒmprɪˈhensɪv/","pos":"adj","def":"Including everything that is necessary; complete.","ex":"The report gives a {w} overview of the market."},{"w":"conceivable","phon":"/kənˈsiːvəbəl/","pos":"adj","def":"Possible to imagine or believe.","ex":"It's {w} that prices will fall next year."}],"Business & Work":[{"w":"acquisition","phon":"/ˌækwɪˈzɪʃən/","pos":"noun","def":"The act of buying or gaining something, especially by a company.","ex":"The {w} of the smaller company boosted profits."},{"w":"administrative","phon":"/ədˈmɪnɪstrətɪv/","pos":"adj","def":"Relating to the organizing and management of a business.","ex":"She handles all the {w} tasks in the office."},{"w":"applicant","phon":"/ˈæplɪkənt/","pos":"noun","def":"A person who applies for a job or position.","ex":"There were over fifty {w}s for the position."},{"w":"assess","phon":"/əˈses/","pos":"verb","def":"To carefully evaluate or judge something.","ex":"The teacher will {w} our progress at the end of term."},{"w":"assessment","phon":"/əˈsesmənt/","pos":"noun","def":"A judgment or evaluation of something.","ex":"The manager gave a positive {w} of her work."},{"w":"bankrupt","phon":"/ˈbæŋkrʌpt/","pos":"adj","def":"Unable to pay debts; having no money left.","ex":"The company went {w} after years of losses."},{"w":"colleague","phon":"/ˈkɒliːɡ/","pos":"noun","def":"A person you work with.","ex":"My {w} helped me finish the report on time."},{"w":"commerce","phon":"/ˈkɒmɜːrs/","pos":"noun","def":"The activity of buying and selling goods, especially on a large scale.","ex":"Online {w} has grown rapidly in the last decade."},{"w":"competence","phon":"/ˈkɒmpɪtəns/","pos":"noun","def":"The ability to do something successfully or efficiently.","ex":"His {w} in handling difficult clients impressed the boss."},{"w":"compensation","phon":"/ˌkɒmpenˈseɪʃən/","pos":"noun","def":"Money paid to make up for loss, injury, or damage.","ex":"She received {w} after the accident at work."},{"w":"qualification","phon":"/ˌkwɒlɪfɪˈkeɪʃən/","pos":"noun","def":"A skill or achievement that makes someone suitable for a job.","ex":"He has the right {w}s for this role."},{"w":"resign","phon":"/rɪˈzaɪn/","pos":"verb","def":"To formally leave a job.","ex":"He decided to {w} after the disagreement."},{"w":"salary","phon":"/ˈsæləri/","pos":"noun","def":"A fixed amount of money paid regularly for work.","ex":"Her {w} increased after the promotion."}],"Society & Media":[{"w":"alliance","phon":"/əˈlaɪəns/","pos":"noun","def":"A formal agreement between groups or countries to work together.","ex":"The two nations formed a military {w}."},{"w":"ambassador","phon":"/æmˈbæsədər/","pos":"noun","def":"An official representative of a country in another country.","ex":"The {w} met with foreign leaders to discuss trade."},{"w":"analyst","phon":"/ˈænəlɪst/","pos":"noun","def":"A person who studies and examines information in detail.","ex":"The financial {w} predicted a market downturn."},{"w":"campaign","phon":"/kæmˈpeɪn/","pos":"noun","def":"A series of organized actions to achieve a goal, often political.","ex":"She ran a strong election {w} last year."},{"w":"candidate","phon":"/ˈkændɪdət/","pos":"noun","def":"A person competing for a job, prize, or political position.","ex":"Three {w}s are running for mayor this year."},{"w":"coalition","phon":"/ˌkoʊəˈlɪʃən/","pos":"noun","def":"A temporary alliance between groups, especially political parties.","ex":"The two parties formed a {w} government."},{"w":"commonwealth","phon":"/ˈkɒmənwelθ/","pos":"noun","def":"A group of countries that work together for shared goals.","ex":"The {w} includes many former British colonies."},{"w":"community","phon":"/kəˈmjuːnəti/","pos":"noun","def":"A group of people living in the same area or sharing interests.","ex":"The local {w} came together to clean the park."},{"w":"chancellor","phon":"/ˈtʃænsələr/","pos":"noun","def":"A senior government official, or head of a university.","ex":"The {w} announced new tax policies today."}],"Science & Technology":[{"w":"audit","phon":"/ˈɔːdɪt/","pos":"noun","def":"An official examination of financial accounts.","ex":"The company underwent a full financial {w}."},{"w":"backup","phon":"/ˈbækʌp/","pos":"noun","def":"A copy of data kept in case the original is lost.","ex":"Always keep a {w} of your important files."},{"w":"biological","phon":"/ˌbaɪəˈlɒdʒɪkəl/","pos":"adj","def":"Relating to living things and biology.","ex":"Scientists study {w} processes inside the cell."},{"w":"biotechnology","phon":"/ˌbaɪoʊtekˈnɒlədʒi/","pos":"noun","def":"The use of living organisms to develop products and technology.","ex":"{w} has led to major advances in medicine."},{"w":"broadband","phon":"/ˈbrɔːdbænd/","pos":"noun","def":"A fast type of internet connection.","ex":"We upgraded our home {w} for faster streaming."},{"w":"browser","phon":"/ˈbraʊzər/","pos":"noun","def":"A computer program used to access the internet.","ex":"She opened her {w} to search for the address."},{"w":"carbon footprint","phon":"/ˈkɑːrbən ˈfʊtprɪnt/","pos":"noun","def":"The amount of carbon dioxide produced by a person's activities.","ex":"Flying less can reduce your {w}."},{"w":"circuit","phon":"/ˈsɜːrkɪt/","pos":"noun","def":"A complete path that electricity can flow through.","ex":"The {w} broke and the lights went out."},{"w":"compress","phon":"/kəmˈpres/","pos":"verb","def":"To reduce the size of something, often a digital file.","ex":"You can {w} the file before sending it."},{"w":"astronomy","phon":"/əˈstrɒnəmi/","pos":"noun","def":"The scientific study of stars, planets, and space.","ex":"He's fascinated by {w} and owns a telescope."}],"Action Verbs":[{"w":"abolish","phon":"/əˈbɒlɪʃ/","pos":"verb","def":"To officially end a law, system, or practice.","ex":"The government voted to {w} the old tax."},{"w":"accumulate","phon":"/əˈkjuːmjəleɪt/","pos":"verb","def":"To gradually gather or increase in amount.","ex":"Dust had {w}d on the shelves for months."},{"w":"anticipate","phon":"/ænˈtɪsɪpeɪt/","pos":"verb","def":"To expect or predict something before it happens.","ex":"We {w} a busy weekend at the store."},{"w":"authorize","phon":"/ˈɔːθəraɪz/","pos":"verb","def":"To give official permission for something.","ex":"Only the manager can {w} a refund."},{"w":"await","phon":"/əˈweɪt/","pos":"verb","def":"To wait for something.","ex":"We {w} your reply with great interest."},{"w":"betray","phon":"/bɪˈtreɪ/","pos":"verb","def":"To be disloyal to someone who trusts you.","ex":"He felt {w}d when his friend told the secret."},{"w":"clarify","phon":"/ˈklærɪfaɪ/","pos":"verb","def":"To make something clearer or easier to understand.","ex":"Could you {w} what you mean by that?"},{"w":"coincide","phon":"/ˌkoʊɪnˈsaɪd/","pos":"verb","def":"To happen at the same time as something else.","ex":"Her birthday {w}s with the school holiday."},{"w":"compile","phon":"/kəmˈpaɪl/","pos":"verb","def":"To gather information together into a list or document.","ex":"She {w}d a list of useful resources."},{"w":"conceal","phon":"/kənˈsiːl/","pos":"verb","def":"To hide something from view or knowledge.","ex":"He tried to {w} his disappointment."},{"w":"condemn","phon":"/kənˈdem/","pos":"verb","def":"To strongly criticize or express disapproval of something.","ex":"Leaders {w}d the attack immediately."},{"w":"confront","phon":"/kənˈfrʌnt/","pos":"verb","def":"To face a difficult situation or person directly.","ex":"She decided to {w} her fear of heights."}],"Health & Society":[{"w":"addiction","phon":"/əˈdɪkʃən/","pos":"noun","def":"A strong, harmful need to do or use something regularly.","ex":"He sought help for his {w} to gambling."},{"w":"alcoholism","phon":"/ˈælkəhɒlɪzəm/","pos":"noun","def":"A medical condition involving dependence on alcohol.","ex":"{w} can seriously damage a person's health."},{"w":"bruise","phon":"/bruːz/","pos":"noun","def":"A dark mark on the skin caused by an injury.","ex":"She had a {w} on her knee after falling."},{"w":"chemotherapy","phon":"/ˌkiːmoʊˈθerəpi/","pos":"noun","def":"A medical treatment that uses chemicals to fight cancer.","ex":"She started {w} after her diagnosis."},{"w":"compassion","phon":"/kəmˈpæʃən/","pos":"noun","def":"A strong feeling of sympathy for someone suffering.","ex":"The nurse treated every patient with {w}."},{"w":"compassionate","phon":"/kəmˈpæʃənət/","pos":"adj","def":"Feeling or showing sympathy and concern for others.","ex":"He gave a {w} response to her difficult news."},{"w":"coma","phon":"/ˈkoʊmə/","pos":"noun","def":"A deep state of unconsciousness, often after serious injury.","ex":"He was in a {w} for two weeks after the crash."}],"Describing & Comparing":[{"w":"adequate","phon":"/ˈædɪkwət/","pos":"adj","def":"Enough or satisfactory for a particular purpose.","ex":"The hotel room was small but {w}."},{"w":"affordable","phon":"/əˈfɔːrdəbəl/","pos":"adj","def":"Not too expensive; reasonably priced.","ex":"They finally found an {w} apartment downtown."},{"w":"alert","phon":"/əˈlɜːrt/","pos":"adj","def":"Paying close attention and ready to act.","ex":"Stay {w} when driving at night."},{"w":"barren","phon":"/ˈbærən/","pos":"adj","def":"Land that is too dry or poor to grow plants.","ex":"The desert was {w} for miles in every direction."},{"w":"beneficial","phon":"/ˌbenɪˈfɪʃəl/","pos":"adj","def":"Helpful or good for someone or something.","ex":"Regular exercise is {w} to your health."},{"w":"breathtaking","phon":"/ˈbreθteɪkɪŋ/","pos":"adj","def":"Extremely beautiful or impressive.","ex":"The view from the top was absolutely {w}."},{"w":"chaotic","phon":"/keɪˈɒtɪk/","pos":"adj","def":"In a state of complete confusion and disorder.","ex":"The airport was {w} after the flights were cancelled."},{"w":"catastrophic","phon":"/ˌkætəˈstrɒfɪk/","pos":"adj","def":"Extremely harmful or disastrous.","ex":"The flood had a {w} effect on the village."},{"w":"compulsory","phon":"/kəmˈpʌlsəri/","pos":"adj","def":"Required by law or rule; not optional.","ex":"Wearing a seatbelt is {w} in most countries."},{"w":"concrete","phon":"/ˈkɒŋkriːt/","pos":"adj","def":"Specific and definite, not vague or abstract.","ex":"We need {w} evidence before making a decision."}],"Decisions & Disagreement":[{"w":"consensus","phon":"/kənˈsensəs/","pos":"noun","def":"General agreement among a group of people.","ex":"The team reached a {w} after a long discussion."},{"w":"consent","phon":"/kənˈsent/","pos":"noun","def":"Permission for something to happen.","ex":"The doctor needed her {w} before the surgery."},{"w":"contradict","phon":"/ˌkɒntrəˈdɪkt/","pos":"verb","def":"To say something that disagrees with another statement.","ex":"His new story {w}s what he said yesterday."},{"w":"controversy","phon":"/ˈkɒntrəvɜːrsi/","pos":"noun","def":"A public disagreement causing strong feelings.","ex":"The new policy caused a lot of {w}."},{"w":"convention","phon":"/kənˈvenʃən/","pos":"noun","def":"A traditional way of behaving, or a large formal meeting.","ex":"It's a social {w} to shake hands when meeting someone."},{"w":"corrupt","phon":"/kəˈrʌpt/","pos":"adj","def":"Dishonest, especially by accepting bribes for personal gain.","ex":"The {w} official was eventually arrested."},{"w":"deceive","phon":"/dɪˈsiːv/","pos":"verb","def":"To deliberately make someone believe something untrue.","ex":"He tried to {w} investors with fake numbers."},{"w":"decisive","phon":"/dɪˈsaɪsɪv/","pos":"adj","def":"Able to make decisions quickly and confidently.","ex":"A good leader needs to be {w} under pressure."},{"w":"deduce","phon":"/dɪˈduːs/","pos":"verb","def":"To reach a conclusion using logic and evidence.","ex":"From the clues, she {w}d who the thief was."},{"w":"disapprove","phon":"/ˌdɪsəˈpruːv/","pos":"verb","def":"To have or express an unfavorable opinion about something.","ex":"Her parents {w}d of her career choice."},{"w":"dispute","phon":"/dɪˈspjuːt/","pos":"noun","def":"A disagreement or argument.","ex":"The two countries are in a border {w}."}],"Society & Culture":[{"w":"contemporary","phon":"/kənˈtempəreri/","pos":"adj","def":"Belonging to the present time; modern.","ex":"The museum features {w} art from local artists."},{"w":"corporation","phon":"/ˌkɔːrpəˈreɪʃən/","pos":"noun","def":"A large company or group of companies recognized as a single legal entity.","ex":"He works for a multinational {w}."},{"w":"courtesy","phon":"/ˈkɜːrtəsi/","pos":"noun","def":"Polite behavior and respect for others.","ex":"She always treats customers with {w}."},{"w":"corruption","phon":"/kəˈrʌpʃən/","pos":"noun","def":"Dishonest behavior by people in power, often for money.","ex":"The new leader promised to fight {w}."},{"w":"dignity","phon":"/ˈdɪɡnəti/","pos":"noun","def":"A calm, serious manner that deserves respect.","ex":"She handled the criticism with great {w}."},{"w":"disgrace","phon":"/dɪsˈɡreɪs/","pos":"noun","def":"Loss of respect because of shameful behavior.","ex":"The scandal brought {w} to the whole family."},{"w":"diplomat","phon":"/ˈdɪpləmæt/","pos":"noun","def":"An official who represents their country abroad.","ex":"The {w} negotiated a peace agreement."},{"w":"divorce","phon":"/dɪˈvɔːrs/","pos":"noun","def":"The legal ending of a marriage.","ex":"Their {w} was finalized last month."}],"Environment":[{"w":"contaminate","phon":"/kənˈtæmɪneɪt/","pos":"verb","def":"To make something dirty, polluted, or impure.","ex":"The chemical spill {w}d the local river."},{"w":"decay","phon":"/dɪˈkeɪ/","pos":"verb","def":"To slowly rot or decompose.","ex":"The old wooden fence began to {w}."},{"w":"deforestation","phon":"/diːˌfɒrɪˈsteɪʃən/","pos":"noun","def":"The cutting down of forests on a large scale.","ex":"{w} is destroying habitats around the world."},{"w":"drought","phon":"/draʊt/","pos":"noun","def":"A long period with little or no rainfall.","ex":"The {w} damaged crops across the region."},{"w":"ecologically","phon":"/ˌiːkəˈlɒdʒɪkli/","pos":"adv","def":"In a way that relates to the environment and living things.","ex":"The new factory was built to be {w} responsible."},{"w":"economical","phon":"/ˌiːkəˈnɒmɪkəl/","pos":"adj","def":"Using money, time, or resources carefully without waste.","ex":"This car is very {w} on fuel."},{"w":"crater","phon":"/ˈkreɪtər/","pos":"noun","def":"A large bowl-shaped hole in the ground, often from an impact.","ex":"The meteor left a huge {w} in the desert."},{"w":"coral","phon":"/ˈkɔːrəl/","pos":"noun","def":"A hard substance formed by tiny sea creatures, building reefs.","ex":"The {w} reef was full of colorful fish."}]},"C1":{"Emotions & Mindset":[{"w":"apprehensive","phon":"/ˌæprɪˈhensɪv/","pos":"adj","def":"Anxious or fearful that something bad may happen.","ex":"She felt {w} about starting her new job."},{"w":"agreeable","phon":"/əˈɡriːəbəl/","pos":"adj","def":"Pleasant and willing to cooperate.","ex":"He's a very {w} colleague, easy to work with."},{"w":"avid","phon":"/ˈævɪd/","pos":"adj","def":"Having a strong, enthusiastic interest in something.","ex":"She's an {w} reader of crime novels."},{"w":"benign","phon":"/bɪˈnaɪn/","pos":"adj","def":"Gentle and kind; not harmful.","ex":"He has a {w} manner that puts people at ease."},{"w":"bliss","phon":"/blɪs/","pos":"noun","def":"Perfect happiness; great joy.","ex":"Lying on the beach all day was pure {w}."},{"w":"cynical","phon":"/ˈsɪnɪkəl/","pos":"adj","def":"Believing that people are only motivated by self-interest.","ex":"He's grown {w} after years of being let down."},{"w":"cynicism","phon":"/ˈsɪnɪsɪzəm/","pos":"noun","def":"A distrustful attitude toward people's motives.","ex":"Her {w} made her doubt everyone's intentions."},{"w":"daunting","phon":"/ˈdɔːntɪŋ/","pos":"adj","def":"Seeming difficult to deal with; intimidating.","ex":"Climbing the mountain looked {w} from below."},{"w":"detest","phon":"/dɪˈtest/","pos":"verb","def":"To dislike someone or something intensely.","ex":"I {w} waiting in long lines."},{"w":"docile","phon":"/ˈdɒsaɪl/","pos":"adj","def":"Easy to control or teach; calm and obedient.","ex":"The horse was surprisingly {w} for a young animal."},{"w":"eccentric","phon":"/ɪkˈsentrɪk/","pos":"adj","def":"Unconventional and slightly strange in behavior.","ex":"Her {w} uncle collects antique typewriters."},{"w":"ecstatic","phon":"/ɪkˈstætɪk/","pos":"adj","def":"Feeling or expressing overwhelming happiness.","ex":"She was {w} when she got the acceptance letter."},{"w":"exuberant","phon":"/ɪɡˈzuːbərənt/","pos":"adj","def":"Full of energy, excitement, and enthusiasm.","ex":"The crowd gave an {w} welcome to the team."},{"w":"ferocious","phon":"/fəˈroʊʃəs/","pos":"adj","def":"Extremely fierce or violent.","ex":"The storm hit the coast with {w} winds."},{"w":"glum","phon":"/ɡlʌm/","pos":"adj","def":"Looking or feeling sad and gloomy.","ex":"He sat in the corner looking {w}."}],"Conflict & Society":[{"w":"adversary","phon":"/ˈædvərseri/","pos":"noun","def":"An opponent or enemy in a contest or conflict.","ex":"The two companies have been business {w}ies for years."},{"w":"allegation","phon":"/ˌæləˈɡeɪʃən/","pos":"noun","def":"A claim that someone has done something wrong, without proof.","ex":"The company denied the {w}s of fraud."},{"w":"allege","phon":"/əˈledʒ/","pos":"verb","def":"To claim something is true without offering proof.","ex":"Witnesses {w} that he ran the red light."},{"w":"bribery","phon":"/ˈbraɪbəri/","pos":"noun","def":"The act of offering money to influence someone dishonestly.","ex":"The official was arrested for {w}."},{"w":"conviction","phon":"/kənˈvɪkʃən/","pos":"noun","def":"A strong belief, or a formal declaration of guilt in court.","ex":"He spoke with great {w} about his plans."},{"w":"convict","phon":"/kənˈvɪkt/","pos":"verb","def":"To formally declare someone guilty of a crime.","ex":"The jury {w}ed him after a week-long trial."},{"w":"discourse","phon":"/ˈdɪskɔːrs/","pos":"noun","def":"Written or spoken communication or debate.","ex":"The book examines political {w} in the media."},{"w":"dissect","phon":"/daɪˈsekt/","pos":"verb","def":"To cut apart for examination, or analyze in detail.","ex":"Critics {w}ed every line of his speech."},{"w":"extortion","phon":"/ɪkˈstɔːrʃən/","pos":"noun","def":"The crime of obtaining something through force or threats.","ex":"He was charged with {w} after threatening the shop owner."},{"w":"harassment","phon":"/həˈræsmənt/","pos":"noun","def":"Repeated unwanted behavior intended to disturb or upset someone.","ex":"The company has a strict policy against {w}."},{"w":"hostility","phon":"/hɒˈstɪləti/","pos":"noun","def":"Unfriendly or aggressive feelings or behavior.","ex":"There was open {w} between the two leaders."},{"w":"compel","phon":"/kəmˈpel/","pos":"verb","def":"To force someone to do something.","ex":"The evidence {w}led him to admit the truth."}],"Arts & Culture":[{"w":"aesthetic","phon":"/esˈθetɪk/","pos":"adj","def":"Concerned with beauty or appreciation of art.","ex":"The building's {w} appeal comes from its clean lines."},{"w":"amateur","phon":"/ˈæmətər/","pos":"noun","def":"A person who does an activity for enjoyment, not as a profession.","ex":"He's just an {w} photographer, but his work is excellent."},{"w":"blockbuster","phon":"/ˈblɒkbʌstər/","pos":"noun","def":"A movie or book that is extremely successful.","ex":"The film became an instant summer {w}."},{"w":"characterization","phon":"/ˌkærəktərɪˈzeɪʃən/","pos":"noun","def":"The way an author creates and develops a character.","ex":"The novel is praised for its rich {w}."},{"w":"connoisseur","phon":"/ˌkɒnəˈsɜːr/","pos":"noun","def":"A person with expert knowledge or taste in a particular field.","ex":"He's a true {w} of fine wine."},{"w":"depict","phon":"/dɪˈpɪkt/","pos":"verb","def":"To show or represent something in a picture or story.","ex":"The painting {w}s a quiet village scene."},{"w":"eclectic","phon":"/ɪˈklektɪk/","pos":"adj","def":"Made up of a wide variety of styles or sources.","ex":"Her music collection is wonderfully {w}."},{"w":"elaborate","phon":"/ɪˈlæbərət/","pos":"adj","def":"Very detailed and complicated in design.","ex":"The wedding had an {w} decoration scheme."},{"w":"flourish","phon":"/ˈflɜːrɪʃ/","pos":"verb","def":"To grow or develop successfully; thrive.","ex":"The art scene began to {w} in the city."},{"w":"gem","phon":"/dʒem/","pos":"noun","def":"A precious stone, or something considered especially valuable.","ex":"This little café is a hidden {w}."}],"Action Verbs":[{"w":"alienate","phon":"/ˈeɪliəneɪt/","pos":"verb","def":"To make someone feel isolated or unwelcome.","ex":"His harsh comments {w}d several team members."},{"w":"alleviate","phon":"/əˈliːvieɪt/","pos":"verb","def":"To make a problem or pain less severe.","ex":"The new policy aims to {w} traffic congestion."},{"w":"bequeath","phon":"/bɪˈkwiːð/","pos":"verb","def":"To leave property or money to someone in a will.","ex":"She {w}ed her entire art collection to the museum."},{"w":"brainwash","phon":"/ˈbreɪnwɒʃ/","pos":"verb","def":"To pressure someone into adopting beliefs through repetition.","ex":"The cult tried to {w} new members."},{"w":"circulate","phon":"/ˈsɜːrkjəleɪt/","pos":"verb","def":"To move around or be passed from person to person.","ex":"Rumors began to {w} about the merger."},{"w":"collaborate","phon":"/kəˈlæbəreɪt/","pos":"verb","def":"To work together with others on a project.","ex":"The two universities {w}d on the research."},{"w":"commend","phon":"/kəˈmend/","pos":"verb","def":"To praise someone formally for an achievement.","ex":"The teacher {w}ed her for her hard work."},{"w":"comprise","phon":"/kəmˈpraɪz/","pos":"verb","def":"To consist of or be made up of particular parts.","ex":"The committee {w}s ten elected members."},{"w":"concur","phon":"/kənˈkɜːr/","pos":"verb","def":"To agree with an opinion or decision.","ex":"The judges {w}red on the final verdict."},{"w":"confide","phon":"/kənˈfaɪd/","pos":"verb","def":"To tell someone a secret, trusting them to keep it private.","ex":"She {w}d in her best friend about the breakup."},{"w":"conform","phon":"/kənˈfɔːrm/","pos":"verb","def":"To behave according to socially accepted rules or standards.","ex":"He refused to {w} to the dress code."},{"w":"degrade","phon":"/dɪˈɡreɪd/","pos":"verb","def":"To lower someone's dignity, or to break down gradually.","ex":"Plastic can take years to {w} naturally."},{"w":"dismay","phon":"/dɪsˈmeɪ/","pos":"noun","def":"A strong feeling of disappointment or discouragement.","ex":"To her {w}, the flight was cancelled."},{"w":"discard","phon":"/dɪˈskɑːrd/","pos":"verb","def":"To get rid of something no longer wanted.","ex":"She {w}ed the old documents after scanning them."},{"w":"dislodge","phon":"/dɪsˈlɒdʒ/","pos":"verb","def":"To force something out of its position.","ex":"They worked together to {w} the stuck rock."},{"w":"elevate","phon":"/ˈelɪveɪt/","pos":"verb","def":"To raise something to a higher level or position.","ex":"The award {w}d her reputation in the industry."},{"w":"elude","phon":"/ɪˈluːd/","pos":"verb","def":"To escape from or avoid someone or something skillfully.","ex":"The suspect managed to {w} police for days."},{"w":"embark","phon":"/ɪmˈbɑːrk/","pos":"verb","def":"To begin a new project, journey, or course of action.","ex":"They {w}ed on a journey across South America."},{"w":"envisage","phon":"/ɪnˈvɪzɪdʒ/","pos":"verb","def":"To imagine something as a future possibility.","ex":"We {w} significant growth over the next decade."},{"w":"evoke","phon":"/ɪˈvoʊk/","pos":"verb","def":"To bring a feeling, memory, or image to mind.","ex":"The smell of bread {w}s memories of her childhood."},{"w":"exploit","phon":"/ɪkˈsplɔɪt/","pos":"verb","def":"To use something or someone unfairly for personal benefit.","ex":"The company was accused of {w}ing its workers."},{"w":"expedite","phon":"/ˈekspɪdaɪt/","pos":"verb","def":"To make a process happen more quickly.","ex":"We paid extra to {w} the delivery."}],"Science & Research":[{"w":"anthropology","phon":"/ˌænθrəˈpɒlədʒi/","pos":"noun","def":"The scientific study of humans and their societies.","ex":"She's studying {w} at university."},{"w":"credibility","phon":"/ˌkredəˈbɪləti/","pos":"noun","def":"The quality of being trusted and believed.","ex":"The scandal damaged his {w} as a journalist."},{"w":"criteria","phon":"/kraɪˈtɪəriə/","pos":"noun","def":"Standards used to judge or decide something.","ex":"The judges have strict {w} for scoring."},{"w":"demographic","phon":"/ˌdeməˈɡræfɪk/","pos":"adj","def":"Relating to the structure of populations.","ex":"The survey targeted a younger {w} group."},{"w":"forensic","phon":"/fəˈrensɪk/","pos":"adj","def":"Relating to scientific methods used to solve crimes.","ex":"{w} experts examined the crime scene carefully."},{"w":"fossil","phon":"/ˈfɒsəl/","pos":"noun","def":"The preserved remains of an ancient plant or animal.","ex":"They found a dinosaur {w} in the desert."},{"w":"genome","phon":"/ˈdʒiːnoʊm/","pos":"noun","def":"The complete set of genetic material in an organism.","ex":"Scientists mapped the entire human {w}."},{"w":"geological","phon":"/ˌdʒiːəˈlɒdʒɪkəl/","pos":"adj","def":"Relating to the study of rocks and the Earth's structure.","ex":"The cliffs reveal millions of years of {w} history."},{"w":"hibernate","phon":"/ˈhaɪbərneɪt/","pos":"verb","def":"To spend the winter in a deep sleep, as some animals do.","ex":"Bears {w} through the coldest months."}],"Everyday Objects":[{"w":"appliance","phon":"/əˈplaɪəns/","pos":"noun","def":"A device or machine for a particular household task.","ex":"They bought a new kitchen {w}."},{"w":"buffer","phon":"/ˈbʌfər/","pos":"noun","def":"Something that protects against shock or reduces impact.","ex":"Savings act as a {w} during hard times."},{"w":"firewall","phon":"/ˈfaɪərwɔːl/","pos":"noun","def":"A system that protects a computer network from unauthorized access.","ex":"The company upgraded its {w} after the hack attempt."},{"w":"fixture","phon":"/ˈfɪkstʃər/","pos":"noun","def":"A piece of equipment fixed in place in a building.","ex":"The light {w}s in the kitchen need replacing."},{"w":"flask","phon":"/flæsk/","pos":"noun","def":"A container used for carrying liquids.","ex":"He filled his {w} with hot coffee before the hike."},{"w":"gadget","phon":"/ˈɡædʒɪt/","pos":"noun","def":"A small mechanical or electronic device or tool.","ex":"He loves buying the latest tech {w}s."}],"Describing the World":[{"w":"customary","phon":"/ˈkʌstəmeri/","pos":"adj","def":"Usual or traditional in a particular situation.","ex":"It's {w} to tip waiters in many countries."},{"w":"durable","phon":"/ˈdʊərəbəl/","pos":"adj","def":"Strong and able to last a long time.","ex":"These boots are extremely {w} for hiking."},{"w":"elastic","phon":"/ɪˈlæstɪk/","pos":"adj","def":"Able to stretch and return to its original shape.","ex":"The fabric is light and {w}."},{"w":"elusive","phon":"/ɪˈluːsɪv/","pos":"adj","def":"Difficult to find, catch, or achieve.","ex":"A solution to the problem remains {w}."},{"w":"enviable","phon":"/ˈenviəbəl/","pos":"adj","def":"So desirable that others wish they had it.","ex":"She has an {w} talent for languages."},{"w":"exotic","phon":"/ɪɡˈzɒtɪk/","pos":"adj","def":"Unusual and interesting because it comes from a foreign place.","ex":"The market sold {w} fruits from across Asia."},{"w":"gruesome","phon":"/ˈɡruːsəm/","pos":"adj","def":"Causing horror or disgust; very unpleasant to see.","ex":"The movie had some surprisingly {w} scenes."},{"w":"hostile","phon":"/ˈhɒstaɪl/","pos":"adj","def":"Unfriendly and aggressive; opposed to something.","ex":"The crowd grew {w} after the decision was announced."},{"w":"immense","phon":"/ɪˈmens/","pos":"adj","def":"Extremely large in size or degree.","ex":"The project required an {w} amount of effort."},{"w":"imperative","phon":"/ɪmˈperətɪv/","pos":"adj","def":"Extremely important or urgent.","ex":"It's {w} that we finish before the deadline."}],"Personality & Work":[{"w":"insecure","phon":"/ˌɪnsɪˈkjʊər/","pos":"adj","def":"Lacking confidence; not feeling safe or certain.","ex":"He felt {w} about his English in front of native speakers."},{"w":"insensitive","phon":"/ɪnˈsensətɪv/","pos":"adj","def":"Not aware of or caring about other people's feelings.","ex":"That joke was rather {w} given the situation."},{"w":"insightful","phon":"/ˈɪnsaɪtfəl/","pos":"adj","def":"Showing clear and deep understanding of something.","ex":"She gave an {w} analysis of the market trends."},{"w":"instinctive","phon":"/ɪnˈstɪŋktɪv/","pos":"adj","def":"Based on natural impulse rather than conscious thought.","ex":"Catching the falling glass was an {w} reaction."},{"w":"intuitive","phon":"/ɪnˈtuːɪtɪv/","pos":"adj","def":"Using instinct rather than conscious reasoning.","ex":"She made an {w} decision to trust him."},{"w":"knowledgeable","phon":"/ˈnɒlɪdʒəbəl/","pos":"adj","def":"Having a lot of knowledge or information about a subject.","ex":"Our guide was extremely {w} about local history."},{"w":"lethargic","phon":"/ləˈθɑːrdʒɪk/","pos":"adj","def":"Lacking energy; sluggish and tired.","ex":"The hot weather made everyone feel {w}."},{"w":"methodical","phon":"/məˈθɒdɪkəl/","pos":"adj","def":"Done carefully and systematically, according to a plan.","ex":"He took a {w} approach to solving the puzzle."},{"w":"naive","phon":"/naɪˈiːv/","pos":"adj","def":"Lacking experience or judgment; too trusting.","ex":"It was {w} of him to believe that offer."},{"w":"perceptive","phon":"/pərˈseptɪv/","pos":"adj","def":"Quick to notice or understand things.","ex":"She made a {w} comment about the team's weaknesses."}],"Innovation & Ideas":[{"w":"ingenious","phon":"/ɪnˈdʒiːniəs/","pos":"adj","def":"Very clever and original, especially in solving problems.","ex":"He came up with an {w} way to save money."},{"w":"ingenuity","phon":"/ˌɪndʒəˈnuːəti/","pos":"noun","def":"The quality of being clever, original, and inventive.","ex":"Her {w} helped the team finish the project on time."},{"w":"innovate","phon":"/ˈɪnəveɪt/","pos":"verb","def":"To introduce new ideas, methods, or products.","ex":"The company needs to {w} to stay competitive."},{"w":"innovative","phon":"/ˈɪnəveɪtɪv/","pos":"adj","def":"Using new methods or ideas; original.","ex":"They developed an {w} solution to the energy problem."},{"w":"integral","phon":"/ˈɪntɪɡrəl/","pos":"adj","def":"Necessary to make something complete; essential.","ex":"Trust is {w} to any good relationship."},{"w":"intellect","phon":"/ˈɪntəlekt/","pos":"noun","def":"The ability to think and reason; intelligence.","ex":"She is known for her sharp {w}."},{"w":"launch","phon":"/lɔːntʃ/","pos":"verb","def":"To start something new, such as a product or project.","ex":"The company plans to {w} a new app next month."},{"w":"legacy","phon":"/ˈleɡəsi/","pos":"noun","def":"Something handed down from the past, or a lasting impact.","ex":"His scientific work left a lasting {w}."},{"w":"pioneer","phon":"/ˌpaɪəˈnɪər/","pos":"noun","def":"A person who is among the first to develop a new idea or area.","ex":"She was a {w} in renewable energy research."},{"w":"phenomenal","phon":"/fəˈnɒmɪnəl/","pos":"adj","def":"Remarkable or exceptional; extraordinary.","ex":"The team made {w} progress this quarter."}],"Society & Ethics":[{"w":"injustice","phon":"/ɪnˈdʒʌstɪs/","pos":"noun","def":"Unfairness; a lack of fair treatment.","ex":"They protested against the social {w} in the city."},{"w":"isolated","phon":"/ˈaɪsəleɪtɪd/","pos":"adj","def":"Separated from others; alone.","ex":"The village felt {w} after the bridge collapsed."},{"w":"jurisdiction","phon":"/ˌdʒʊərɪsˈdɪkʃən/","pos":"noun","def":"The official power to make legal decisions in an area.","ex":"This case falls outside the court's {w}."},{"w":"juvenile","phon":"/ˈdʒuːvənaɪl/","pos":"adj","def":"Relating to young people; childish in behavior.","ex":"The {w} justice system treats young offenders differently."},{"w":"negligent","phon":"/ˈneɡlɪdʒənt/","pos":"adj","def":"Failing to take proper care over something.","ex":"The driver was found {w} for ignoring the warning signs."},{"w":"obscure","phon":"/əbˈskjʊər/","pos":"adj","def":"Not well known, or difficult to understand.","ex":"He referenced an {w} historical event."},{"w":"orphan","phon":"/ˈɔːrfən/","pos":"noun","def":"A child whose parents have died.","ex":"The charity supports {w}s around the world."},{"w":"peasant","phon":"/ˈpezənt/","pos":"noun","def":"A poor farmer or farm worker, especially historically.","ex":"The novel is set among {w}s in medieval Europe."},{"w":"persecution","phon":"/ˌpɜːrsɪˈkjuːʃən/","pos":"noun","def":"Cruel and unfair treatment because of beliefs or identity.","ex":"They fled the country to escape religious {w}."}]},"C2":{"Strong Feelings":[{"w":"abhor","phon":"/əbˈhɔːr/","pos":"verb","def":"To hate something intensely; to regard with disgust.","ex":"She {w}s any form of cruelty to animals."},{"w":"abhorrent","phon":"/əbˈhɔːrənt/","pos":"adj","def":"Causing intense disgust or hatred.","ex":"The judge called the crime utterly {w}."},{"w":"aghast","phon":"/əˈɡæst/","pos":"adj","def":"Filled with shock or horror.","ex":"She stood {w} as the building collapsed."},{"w":"angst","phon":"/æŋst/","pos":"noun","def":"A strong feeling of anxiety or dread, often about life in general.","ex":"His teenage years were filled with existential {w}."},{"w":"belligerent","phon":"/bəˈlɪdʒərənt/","pos":"adj","def":"Hostile and aggressive; eager to fight.","ex":"He became {w} after a few drinks."},{"w":"bereft","phon":"/bɪˈreft/","pos":"adj","def":"Deprived of or lacking something, often after a loss.","ex":"She felt {w} after her closest friend moved away."},{"w":"callous","phon":"/ˈkæləs/","pos":"adj","def":"Showing no concern for others' feelings; cruelly indifferent.","ex":"His {w} remark hurt everyone in the room."},{"w":"contemptuous","phon":"/kənˈtemptʃuəs/","pos":"adj","def":"Showing scorn or a complete lack of respect.","ex":"She gave a {w} laugh at his excuse."},{"w":"elated","phon":"/ɪˈleɪtɪd/","pos":"adj","def":"Extremely happy and excited.","ex":"The team was {w} after winning the championship."},{"w":"euphoria","phon":"/juːˈfɔːriə/","pos":"noun","def":"A feeling of intense happiness and excitement.","ex":"A sense of {w} swept through the stadium."},{"w":"forlorn","phon":"/fərˈlɔːrn/","pos":"adj","def":"Sad and lonely, as if abandoned.","ex":"The old dog looked {w} sitting by the gate."},{"w":"haughty","phon":"/ˈhɔːti/","pos":"adj","def":"Arrogantly proud and looking down on others.","ex":"Her {w} manner offended several guests."}],"Governance & Society":[{"w":"accountability","phon":"/əˌkaʊntəˈbɪləti/","pos":"noun","def":"The responsibility to explain or justify your actions.","ex":"The new rules increase {w} among managers."},{"w":"anarchic","phon":"/əˈnɑːrkɪk/","pos":"adj","def":"Lacking order or control; chaotic.","ex":"The strike created an {w} atmosphere downtown."},{"w":"autonomous","phon":"/ɔːˈtɒnəməs/","pos":"adj","def":"Able to govern or act independently.","ex":"The region became {w} after the treaty."},{"w":"egalitarian","phon":"/ɪˌɡælɪˈteəriən/","pos":"adj","def":"Believing that all people should have equal rights and opportunities.","ex":"They built an {w} society based on shared resources."},{"w":"emolument","phon":"/ɪˈmɒljəmənt/","pos":"noun","def":"A salary, fee, or other payment for work done.","ex":"The contract outlined his annual {w}."},{"w":"eminent","phon":"/ˈemɪnənt/","pos":"adj","def":"Famous and respected within a particular field.","ex":"She invited an {w} scientist to speak at the event."},{"w":"formidable","phon":"/ˈfɔːrmɪdəbəl/","pos":"adj","def":"Inspiring fear or respect through impressive power or skill.","ex":"She is a {w} opponent in any debate."},{"w":"grievance","phon":"/ˈɡriːvəns/","pos":"noun","def":"A formal complaint about unfair treatment.","ex":"Employees filed a {w} about unpaid overtime."},{"w":"hermit","phon":"/ˈhɜːrmɪt/","pos":"noun","def":"A person who lives alone, avoiding society.","ex":"He became a {w}, living far from any town."}],"Skill & Ability":[{"w":"adept","phon":"/əˈdept/","pos":"adj","def":"Very skilled or proficient at something.","ex":"She's remarkably {w} at solving complex problems."},{"w":"agile","phon":"/ˈædʒaɪl/","pos":"adj","def":"Able to move quickly and easily; mentally quick.","ex":"The gymnast was incredibly {w} on the beam."},{"w":"aptitude","phon":"/ˈæptɪtuːd/","pos":"noun","def":"A natural ability or talent for something.","ex":"He shows great {w} for mathematics."},{"w":"arduous","phon":"/ˈɑːrdʒuəs/","pos":"adj","def":"Requiring great effort; difficult and tiring.","ex":"The climb was long and {w}."},{"w":"athleticism","phon":"/æθˈletɪsɪzəm/","pos":"noun","def":"Physical strength, fitness, and agility.","ex":"The dancers displayed amazing {w}."},{"w":"cogent","phon":"/ˈkoʊdʒənt/","pos":"adj","def":"Clear, logical, and convincing.","ex":"She presented a {w} argument for the new policy."},{"w":"diligence","phon":"/ˈdɪlɪdʒəns/","pos":"noun","def":"Careful and persistent effort in work.","ex":"His {w} earned him a promotion within a year."},{"w":"emulate","phon":"/ˈemjəleɪt/","pos":"verb","def":"To try to match or surpass someone by imitating them.","ex":"Young players often {w} their sporting heroes."},{"w":"formidably","phon":"/ˈfɔːrmɪdəbli/","pos":"adv","def":"In a way that inspires fear or great respect.","ex":"She played the piece {w} well for her age."}],"Literature & Language":[{"w":"allegory","phon":"/ˈælɪɡɔːri/","pos":"noun","def":"A story with a hidden moral or political meaning.","ex":"The novel is read as an {w} for modern politics."},{"w":"anthology","phon":"/ænˈθɒlədʒi/","pos":"noun","def":"A collection of writings, such as poems or stories.","ex":"She edited an {w} of short stories from new writers."},{"w":"archetype","phon":"/ˈɑːrkɪtaɪp/","pos":"noun","def":"A typical example or original pattern of something.","ex":"The hero is an {w} found in stories worldwide."},{"w":"artifact","phon":"/ˈɑːrtɪfækt/","pos":"noun","def":"An object made by humans, often of historical interest.","ex":"The museum displays ancient {w}s from Egypt."},{"w":"colloquial","phon":"/kəˈloʊkwiəl/","pos":"adj","def":"Used in informal, everyday conversation.","ex":"The book uses {w} language to feel more natural."},{"w":"connotation","phon":"/ˌkɒnəˈteɪʃən/","pos":"noun","def":"An additional meaning or feeling a word suggests, beyond its literal sense.","ex":"The word 'cheap' has a negative {w}."},{"w":"euphemism","phon":"/ˈjuːfəmɪzəm/","pos":"noun","def":"A mild word used in place of a harsher or more direct one.","ex":"'Passed away' is a common {w} for 'died'."},{"w":"fallacy","phon":"/ˈfæləsi/","pos":"noun","def":"A mistaken belief based on false reasoning.","ex":"It's a common {w} that money guarantees happiness."},{"w":"figurative","phon":"/ˈfɪɡjərətɪv/","pos":"adj","def":"Used in a non-literal, symbolic way.","ex":"'Drowning in work' is a {w} expression."}],"Science & Mind":[{"w":"cognitive","phon":"/ˈkɒɡnɪtɪv/","pos":"adj","def":"Relating to the mental processes of thinking and understanding.","ex":"The game is designed to improve {w} skills."},{"w":"correlation","phon":"/ˌkɒrəˈleɪʃən/","pos":"noun","def":"A relationship or connection between two things.","ex":"There's a strong {w} between exercise and mood."},{"w":"echolocation","phon":"/ˌekoʊloʊˈkeɪʃən/","pos":"noun","def":"A method of locating objects using reflected sound, used by bats and dolphins.","ex":"Bats rely on {w} to navigate in the dark."},{"w":"equilibrium","phon":"/ˌiːkwɪˈlɪbriəm/","pos":"noun","def":"A state of balance between forces or influences.","ex":"The economy slowly returned to {w}."},{"w":"extant","phon":"/ɪkˈstænt/","pos":"adj","def":"Still in existence; surviving.","ex":"Only a few {w} copies of the manuscript remain."},{"w":"fluctuate","phon":"/ˈflʌktʃueɪt/","pos":"verb","def":"To change frequently and irregularly in level or amount.","ex":"Prices {w} depending on supply and demand."},{"w":"gravitate","phon":"/ˈɡrævɪteɪt/","pos":"verb","def":"To be drawn toward something due to natural interest.","ex":"Students often {w} toward subjects they enjoy."},{"w":"amorphous","phon":"/əˈmɔːrfəs/","pos":"adj","def":"Without a clear shape or structure.","ex":"The idea was still {w}, with no real plan yet."}],"Action Verbs":[{"w":"adhere","phon":"/ədˈhɪər/","pos":"verb","def":"To stick firmly to a surface, or to follow a rule strictly.","ex":"All staff must {w} to the new safety guidelines."},{"w":"allude","phon":"/əˈluːd/","pos":"verb","def":"To mention something indirectly.","ex":"She {w}d to problems at work without giving details."},{"w":"apprehend","phon":"/ˌæprɪˈhend/","pos":"verb","def":"To arrest someone, or to understand something fully.","ex":"Police {w}ed the suspect near the station."},{"w":"assimilate","phon":"/əˈsɪməleɪt/","pos":"verb","def":"To become part of a group, or to fully absorb information.","ex":"It took years for the family to {w} into the new culture."},{"w":"besiege","phon":"/bɪˈsiːdʒ/","pos":"verb","def":"To surround with demands, or to surround a place with armed forces.","ex":"Reporters {w}d the singer outside the hotel."},{"w":"circumnavigate","phon":"/ˌsɜːrkəmˈnævɪɡeɪt/","pos":"verb","def":"To travel all the way around something, especially the world.","ex":"The sailor became famous for trying to {w} the globe alone."},{"w":"condone","phon":"/kənˈdoʊn/","pos":"verb","def":"To accept or allow behavior that is considered wrong.","ex":"The school does not {w} any form of bullying."},{"w":"contrive","phon":"/kənˈtraɪv/","pos":"verb","def":"To plan or create something cleverly, often with difficulty.","ex":"They {w}d a way to escape the flooded building."},{"w":"denounce","phon":"/dɪˈnaʊns/","pos":"verb","def":"To publicly criticize or condemn something strongly.","ex":"The leader {w}d the attack as an act of terror."},{"w":"deprecate","phon":"/ˈdeprɪkeɪt/","pos":"verb","def":"To express disapproval of something, or mark it as outdated.","ex":"The old method has been {w}d in favor of a new one."},{"w":"diminish","phon":"/dɪˈmɪnɪʃ/","pos":"verb","def":"To make or become smaller, weaker, or less important.","ex":"His influence {w}ed after the scandal."},{"w":"disparage","phon":"/dɪˈspærɪdʒ/","pos":"verb","def":"To criticize someone or something unfairly.","ex":"He often {w}s his colleagues' ideas in meetings."},{"w":"disseminate","phon":"/dɪˈsemɪneɪt/","pos":"verb","def":"To spread information widely.","ex":"The agency {w}s health advice across the country."},{"w":"distill","phon":"/dɪˈstɪl/","pos":"verb","def":"To extract the essential meaning from something complex.","ex":"She {w}ed the report into three key points."},{"w":"encompass","phon":"/ɪnˈkʌmpəs/","pos":"verb","def":"To include a wide range of things.","ex":"The course {w}es history, art, and politics."},{"w":"engender","phon":"/ɪnˈdʒendər/","pos":"verb","def":"To cause a feeling or situation to occur.","ex":"The policy {w}ed widespread frustration."},{"w":"hinder","phon":"/ˈhɪndər/","pos":"verb","def":"To create difficulties that slow down progress.","ex":"Heavy rain {w}ed the rescue operation."}],"Describing Quality":[{"w":"authenticity","phon":"/ˌɔːθenˈtɪsəti/","pos":"noun","def":"The quality of being genuine or real.","ex":"Experts confirmed the painting's {w}."},{"w":"austere","phon":"/ɔːˈstɪər/","pos":"adj","def":"Plain and simple, without luxury or decoration.","ex":"The monastery had an {w} interior."},{"w":"bona fide","phon":"/ˌboʊnə ˈfaɪd/","pos":"adj","def":"Genuine; made or done in good faith.","ex":"This is a {w} offer, not a scam."},{"w":"bogus","phon":"/ˈboʊɡəs/","pos":"adj","def":"Not genuine or real; fake.","ex":"The company was selling {w} insurance policies."},{"w":"capacious","phon":"/kəˈpeɪʃəs/","pos":"adj","def":"Having a lot of space inside; roomy.","ex":"She packed everything into one {w} suitcase."},{"w":"counterproductive","phon":"/ˌkaʊntərprəˈdʌktɪv/","pos":"adj","def":"Having the opposite effect of what was intended.","ex":"Working overtime every day became {w}."},{"w":"deficient","phon":"/dɪˈfɪʃənt/","pos":"adj","def":"Lacking some necessary quality or element.","ex":"The diet was {w} in essential vitamins."},{"w":"ephemeral","phon":"/ɪˈfemərəl/","pos":"adj","def":"Lasting for only a very short time.","ex":"Fame on social media can be {w}."},{"w":"haphazard","phon":"/hæpˈhæzərd/","pos":"adj","def":"Done without organization or planning.","ex":"The files were stored in a {w} way."},{"w":"hapless","phon":"/ˈhæpləs/","pos":"adj","def":"Unlucky; experiencing misfortune.","ex":"The {w} traveler missed three connecting flights."}],"Refined Vocabulary":[{"w":"impeccable","phon":"/ɪmˈpekəbəl/","pos":"adj","def":"Flawless; in accordance with the highest standards.","ex":"Her table manners were absolutely {w}."},{"w":"indignant","phon":"/ɪnˈdɪɡnənt/","pos":"adj","def":"Feeling or showing anger because of something unfair.","ex":"He was {w} at being blamed for the mistake."},{"w":"inexorable","phon":"/ɪnˈeksərəbəl/","pos":"adj","def":"Impossible to stop or prevent; unstoppable.","ex":"The {w} rise in prices worried everyone."},{"w":"inscrutable","phon":"/ɪnˈskruːtəbəl/","pos":"adj","def":"Impossible to understand or interpret.","ex":"His {w} expression gave nothing away."},{"w":"intrinsic","phon":"/ɪnˈtrɪnzɪk/","pos":"adj","def":"Belonging naturally to something; essential.","ex":"The painting has {w} value beyond its price."},{"w":"lament","phon":"/ləˈment/","pos":"verb","def":"To express sadness or regret about something.","ex":"She {w}ed the loss of the old neighborhood."},{"w":"magnanimous","phon":"/mæɡˈnænɪməs/","pos":"adj","def":"Generous and forgiving, especially toward a rival.","ex":"The winner was {w} in victory, praising her opponent."},{"w":"meticulous","phon":"/məˈtɪkjʊləs/","pos":"adj","def":"Showing great attention to detail; very careful.","ex":"The surgeon was {w} during the entire operation."},{"w":"nonchalant","phon":"/ˌnɒnʃəˈlɑːnt/","pos":"adj","def":"Calm and relaxed, appearing unconcerned.","ex":"He gave a {w} shrug despite the bad news."},{"w":"nostalgia","phon":"/nɒˈstældʒə/","pos":"noun","def":"A sentimental longing for the past.","ex":"The old photos filled her with {w}."}],"Precision & Logic":[{"w":"hypothesis","phon":"/haɪˈpɒθəsɪs/","pos":"noun","def":"An idea or explanation that has not yet been proven.","ex":"The scientist tested her {w} with a new experiment."},{"w":"hypothetical","phon":"/ˌhaɪpəˈθetɪkəl/","pos":"adj","def":"Based on an imagined situation rather than facts.","ex":"Let's consider a {w} scenario for a moment."},{"w":"incongruous","phon":"/ɪnˈkɒŋɡruəs/","pos":"adj","def":"Strange because it does not fit the surrounding situation.","ex":"The modern building looked {w} next to the old castle."},{"w":"intermediary","phon":"/ˌɪntərˈmiːdieri/","pos":"noun","def":"A person who acts as a link between two parties.","ex":"A lawyer acted as an {w} during the negotiations."},{"w":"meticulously","phon":"/məˈtɪkjʊləsli/","pos":"adv","def":"In a way that shows extreme care and attention to detail.","ex":"She {w} checked every figure in the report."},{"w":"paradoxical","phon":"/ˌpærəˈdɒksɪkəl/","pos":"adj","def":"Seeming contradictory but possibly true.","ex":"It's {w} that working less can boost productivity."},{"w":"parameter","phon":"/pəˈræmɪtər/","pos":"noun","def":"A factor or limit that defines the scope of something.","ex":"We need to set clear {w}s for the project."},{"w":"paramount","phon":"/ˈpærəmaʊnt/","pos":"adj","def":"More important than anything else; supreme.","ex":"Safety is {w} when working with heavy machinery."},{"w":"pervasive","phon":"/pərˈveɪsɪv/","pos":"adj","def":"Spreading widely throughout an area or group of people.","ex":"The influence of social media is now {w}."}]}};
+
+const LEVELS = [
+  { id: 'A1', name: 'Starter' },
+  { id: 'A2', name: 'Basic' },
+  { id: 'B1', name: 'Intermediate' },
+  { id: 'B2', name: 'Upper-Int' },
+  { id: 'C1', name: 'Advanced' },
+  { id: 'C2', name: 'Mastery' },
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let currentLevel = 'A1';
+let currentTopic = null; // topic name within the level
+let currentMode = 'flashcard';
+let xp = 0;
+let streak = 0;
+let masteredWords = new Set(); // keys: "LEVEL|TOPIC|word"
+let levelProgress = {}; // LEVEL -> mastered count
+LEVELS.forEach(l => levelProgress[l.id] = 0);
+
+// flashcard state
+let fcIndex = 0;
+let fcDeck = [];
+
+// quiz state
+let quizIndex = 0;
+let quizDeck = [];
+let quizScore = 0;
+let quizTimer = null;
+let quizTimeLeft = 12;
+const QUIZ_TIME = 12;
+
+// sentence state
+let sfIndex = 0;
+let sfDeck = [];
+let sfScore = 0;
+
+// ============================================================
+// HELPERS
+// ============================================================
+function totalWordCount() {
+  let n = 0;
+  LEVELS.forEach(l => {
+    const topics = VOCAB_RAW[l.id] || {};
+    Object.values(topics).forEach(arr => n += arr.length);
+  });
+  return n;
+}
+
+function levelWordCount(level) {
+  const topics = VOCAB_RAW[level] || {};
+  return Object.values(topics).reduce((s, arr) => s + arr.length, 0);
+}
+
+function topicsForLevel(level) {
+  return Object.keys(VOCAB_RAW[level] || {});
+}
+
+function wordsForCurrentSection() {
+  if (!currentTopic) return [];
+  return (VOCAB_RAW[currentLevel] && VOCAB_RAW[currentLevel][currentTopic]) || [];
+}
+
+function masteredCountInLevel(level) {
+  const topics = VOCAB_RAW[level] || {};
+  let count = 0;
+  Object.entries(topics).forEach(([topic, arr]) => {
+    arr.forEach(item => {
+      if (masteredWords.has(level + '|' + topic + '|' + item.w)) count++;
+    });
+  });
+  return count;
+}
+
+function masteredCountInTopic(level, topic) {
+  const arr = (VOCAB_RAW[level] && VOCAB_RAW[level][topic]) || [];
+  let count = 0;
+  arr.forEach(item => { if (masteredWords.has(level + '|' + topic + '|' + item.w)) count++; });
+  return count;
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function escapeHTML(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+// ============================================================
+// INIT
+// ============================================================
+function init() {
+  document.getElementById('total-val').textContent = totalWordCount();
+  buildLevelTrack();
+  selectLevel('A1', true);
+  updateStats();
+}
+
+function buildLevelTrack() {
+  const track = document.getElementById('level-track');
+  track.innerHTML = LEVELS.map((lv) => {
+    const isActive = lv.id === currentLevel;
+    const total = levelWordCount(lv.id);
+    const mastered = masteredCountInLevel(lv.id);
+    const done = total > 0 && mastered >= total;
+    return `<div class="level-node ${isActive ? 'active' : ''}" data-level="${lv.id}">
+      ${done ? '<span class="lv-check">✓</span>' : ''}
+      <div class="lv-tag">${lv.id}</div>
+      <div class="lv-name">${lv.name}</div>
+      <div class="lv-prog">${mastered}/${total} words</div>
+    </div>`;
+  }).join('');
+  track.querySelectorAll('.level-node').forEach(node => {
+    node.addEventListener('click', () => selectLevel(node.dataset.level));
+  });
+}
+
+function selectLevel(id, isInit) {
+  currentLevel = id;
+  const topics = topicsForLevel(id);
+  currentTopic = topics[0] || null;
+  buildLevelTrack();
+  buildTopicGrid();
+  if (!isInit) switchMode(currentMode);
+  else switchMode('flashcard');
+}
+
+function buildTopicGrid() {
+  const grid = document.getElementById('topic-grid');
+  const topics = topicsForLevel(currentLevel);
+  document.getElementById('topic-label').textContent = `Topic Section · ${currentLevel}`;
+  grid.innerHTML = topics.map(topic => {
+    const arr = VOCAB_RAW[currentLevel][topic];
+    const mastered = masteredCountInTopic(currentLevel, topic);
+    const isActive = topic === currentTopic;
+    const done = mastered >= arr.length;
+    return `<div class="topic-card ${isActive ? 'active' : ''}" data-topic="${escapeHTML(topic)}">
+      ${done ? '<span class="tc-check">✓</span>' : ''}
+      <div class="tc-name">${escapeHTML(topic)}</div>
+      <div class="tc-count">${mastered}/${arr.length} words</div>
+    </div>`;
+  }).join('');
+  grid.querySelectorAll('.topic-card').forEach(card => {
+    card.addEventListener('click', () => selectTopic(card.dataset.topic));
+  });
+}
+
+function selectTopic(topic) {
+  currentTopic = topic;
+  buildTopicGrid();
+  switchMode(currentMode);
+}
+
+function updateStats() {
+  document.getElementById('xp-val').textContent = xp;
+  document.getElementById('streak-val').textContent = streak;
+  document.getElementById('mastered-val').textContent = masteredWords.size;
+}
+
+function addXP(amount) {
+  xp += amount;
+  updateStats();
+}
+
+function refreshProgressUI() {
+  buildLevelTrack();
+  buildTopicGrid();
+  updateStats();
+}
+
+// ============================================================
+// MODE SWITCHING
+// ============================================================
+function switchMode(mode) {
+  currentMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  clearInterval(quizTimer);
+
+  const words = wordsForCurrentSection();
+  if (!words.length) {
+    document.getElementById('game-area').innerHTML = `
+      <div class="empty-state">
+        <div class="es-emoji">🗂️</div>
+        <div>No topic selected yet. Pick a topic section above to start.</div>
+      </div>`;
+    return;
+  }
+
+  if (mode === 'flashcard') renderFlashcards();
+  if (mode === 'quiz') renderQuiz();
+  if (mode === 'sentence') renderSentenceFix();
+}
+
+// ============================================================
+// FLASHCARD MODE
+// ============================================================
+function renderFlashcards() {
+  fcDeck = shuffle(wordsForCurrentSection());
+  fcIndex = 0;
+  drawFlashcard();
+}
+
+function drawFlashcard() {
+  const area = document.getElementById('game-area');
+  if (fcIndex >= fcDeck.length) {
+    area.innerHTML = endScreenHTML('🃏', 'Deck complete!', `You reviewed all ${fcDeck.length} words in "${currentTopic}".`, [
+      { val: fcDeck.length, lbl: 'Cards seen' },
+      { val: xp, lbl: 'Total XP' },
+    ], [
+      { label: 'Review again', action: 'renderFlashcards()' },
+      { label: 'Try Timed Quiz →', action: "switchMode('quiz')", primary: true },
+    ]);
+    return;
+  }
+  const item = fcDeck[fcIndex];
+  const exampleHtml = escapeHTML(item.ex).replace('{w}', `<span class="em">${escapeHTML(item.w)}</span>`);
+  area.innerHTML = `
+    <div class="fc-progress"><span>Card ${fcIndex + 1} of ${fcDeck.length}</span><span>${currentLevel} · ${escapeHTML(currentTopic)}</span></div>
+    <div class="flashcard-wrap">
+      <div class="flashcard" id="flashcard">
+        <div class="flashcard-inner" id="flashcard-inner">
+          <div class="fc-face fc-front">
+            <div class="fc-word">${escapeHTML(item.w)}</div>
+            <div class="fc-phon">${escapeHTML(item.phon)}</div>
+            <div class="fc-pos">${escapeHTML(item.pos)}</div>
+            <div class="fc-hint">Tap to reveal meaning</div>
+          </div>
+          <div class="fc-face fc-back">
+            <div class="fc-def">${escapeHTML(item.def)}</div>
+            <div class="fc-example">${exampleHtml}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-controls">
+      <button class="fc-btn again" id="fc-again">😵 Again</button>
+      <button class="fc-btn good" id="fc-good">🙂 Good</button>
+      <button class="fc-btn easy" id="fc-easy">😎 Easy</button>
+    </div>
+  `;
+  document.getElementById('flashcard').addEventListener('click', flipCard);
+  document.getElementById('fc-again').addEventListener('click', () => rateCard('again'));
+  document.getElementById('fc-good').addEventListener('click', () => rateCard('good'));
+  document.getElementById('fc-easy').addEventListener('click', () => rateCard('easy'));
+}
+
+function flipCard() {
+  const card = document.getElementById('flashcard');
+  card.classList.toggle('flipped');
+}
+
+function rateCard(rating) {
+  const item = fcDeck[fcIndex];
+  const key = currentLevel + '|' + currentTopic + '|' + item.w;
+  if (rating === 'again') {
+    streak = 0;
+    addXP(1);
+  } else if (rating === 'good') {
+    streak++;
+    masteredWords.add(key);
+    addXP(3);
+  } else {
+    streak++;
+    masteredWords.add(key);
+    addXP(5);
+  }
+  refreshProgressUI();
+  fcIndex++;
+  drawFlashcard();
+}
+
+// ============================================================
+// QUIZ MODE (timed MCQ)
+// ============================================================
+function allDefsPool() {
+  // Build a pool of definitions from the same level for distractors
+  const topics = VOCAB_RAW[currentLevel] || {};
+  let pool = [];
+  Object.values(topics).forEach(arr => arr.forEach(item => pool.push(item.def)));
+  return pool;
+}
+
+function renderQuiz() {
+  quizDeck = shuffle(wordsForCurrentSection());
+  quizIndex = 0;
+  quizScore = 0;
+  drawQuizQuestion();
+}
+
+function drawQuizQuestion() {
+  clearInterval(quizTimer);
+  const area = document.getElementById('game-area');
+  if (quizIndex >= quizDeck.length) {
+    const pct = Math.round((quizScore / quizDeck.length) * 100);
+    area.innerHTML = endScreenHTML(pct >= 70 ? '🏆' : '💪', pct >= 70 ? 'Nice work!' : 'Keep practicing!', `You scored ${quizScore} out of ${quizDeck.length} (${pct}%) on "${currentTopic}".`, [
+      { val: quizScore, lbl: 'Correct' },
+      { val: pct + '%', lbl: 'Accuracy' },
+      { val: xp, lbl: 'Total XP' },
+    ], [
+      { label: 'Retry quiz', action: 'renderQuiz()' },
+      { label: 'Fix sentences →', action: "switchMode('sentence')", primary: true },
+    ]);
+    return;
+  }
+
+  const item = quizDeck[quizIndex];
+  const pool = allDefsPool().filter(d => d !== item.def);
+  const distractors = shuffle(pool).slice(0, 3);
+  const options = shuffle([item.def, ...distractors]);
+  quizTimeLeft = QUIZ_TIME;
+  window.__quizCorrectDef = item.def;
+
+  area.innerHTML = `
+    <div class="quiz-top">
+      <div class="quiz-counter">Question ${quizIndex + 1} of ${quizDeck.length} · Score ${quizScore}</div>
+      <div class="timer-ring">
+        <svg width="46" height="46">
+          <circle class="timer-bg" cx="23" cy="23" r="19"></circle>
+          <circle class="timer-fg" id="timer-circle" cx="23" cy="23" r="19" stroke-dasharray="119" stroke-dashoffset="0"></circle>
+        </svg>
+        <div class="timer-num" id="timer-num">${quizTimeLeft}</div>
+      </div>
+    </div>
+    <div class="quiz-q">
+      <div class="quiz-q-label">What does this word mean?</div>
+      <div class="quiz-q-word">${escapeHTML(item.w)}</div>
+      <div class="quiz-q-sub">${escapeHTML(item.phon)} · ${escapeHTML(item.pos)}</div>
+    </div>
+    <div class="quiz-opts" id="quiz-opts">
+      ${options.map((opt, i) => `<button class="quiz-opt" type="button" data-opt-index="${i}">${escapeHTML(opt)}</button>`).join('')}
+    </div>
+    <div class="quiz-feedback" id="quiz-feedback"></div>
+  `;
+
+  document.querySelectorAll('#quiz-opts .quiz-opt').forEach((btn, i) => {
+    btn.addEventListener('click', () => answerQuiz(i, options[i]));
+  });
+
+  startQuizTimer();
+}
+
+function startQuizTimer() {
+  const circle = document.getElementById('timer-circle');
+  const num = document.getElementById('timer-num');
+  const circumference = 119;
+  quizTimer = setInterval(() => {
+    quizTimeLeft--;
+    if (num) num.textContent = quizTimeLeft;
+    if (circle) {
+      const offset = circumference * (1 - quizTimeLeft / QUIZ_TIME);
+      circle.style.strokeDashoffset = offset;
+      circle.style.stroke = quizTimeLeft <= 4 ? 'var(--red)' : 'var(--lime)';
+    }
+    if (quizTimeLeft <= 0) {
+      clearInterval(quizTimer);
+      answerQuiz(-1, null);
+    }
+  }, 1000);
+}
+
+function answerQuiz(idx, chosen) {
+  clearInterval(quizTimer);
+  const item = quizDeck[quizIndex];
+  const correctDef = window.__quizCorrectDef;
+  const opts = document.querySelectorAll('#quiz-opts .quiz-opt');
+  const fb = document.getElementById('quiz-feedback');
+  const isCorrect = chosen === correctDef;
+
+  opts.forEach((btn) => {
+    btn.classList.add('disabled');
+    const optText = btn.textContent;
+    if (optText === correctDef) btn.classList.add('correct-opt');
+    else if (idx !== -1 && optText === chosen) btn.classList.add('wrong-opt');
+  });
+
+  if (isCorrect) {
+    quizScore++;
+    streak++;
+    addXP(quizTimeLeft > 6 ? 8 : 5);
+    masteredWords.add(currentLevel + '|' + currentTopic + '|' + item.w);
+    fb.textContent = '✓ Correct!' + (quizTimeLeft > 6 ? ' Fast answer bonus +8 XP' : ' +5 XP');
+    fb.className = 'quiz-feedback ok';
+  } else {
+    streak = 0;
+    fb.textContent = idx === -1 ? "⏱ Time's up! The correct meaning is highlighted." : '✗ Not quite. Correct meaning highlighted.';
+    fb.className = 'quiz-feedback bad';
+  }
+  refreshProgressUI();
+
+  setTimeout(() => {
+    quizIndex++;
+    drawQuizQuestion();
+  }, 1400);
+}
+
+// ============================================================
+// SENTENCE FIX MODE (write the word, get corrected feedback)
+// ============================================================
+function renderSentenceFix() {
+  sfDeck = shuffle(wordsForCurrentSection());
+  sfIndex = 0;
+  sfScore = 0;
+  drawSentenceFix();
+}
+
+function drawSentenceFix() {
+  const area = document.getElementById('game-area');
+  if (sfIndex >= sfDeck.length) {
+    const pct = Math.round((sfScore / sfDeck.length) * 100);
+    area.innerHTML = endScreenHTML(pct >= 70 ? '✍️' : '📝', pct >= 70 ? 'Great writing!' : 'Good attempt!', `You correctly completed ${sfScore} of ${sfDeck.length} sentences in "${currentTopic}".`, [
+      { val: sfScore, lbl: 'Correct' },
+      { val: pct + '%', lbl: 'Accuracy' },
+      { val: xp, lbl: 'Total XP' },
+    ], [
+      { label: 'Retry', action: 'renderSentenceFix()' },
+      { label: 'Back to flashcards', action: "switchMode('flashcard')", primary: true },
+    ]);
+    return;
+  }
+  const item = sfDeck[sfIndex];
+  const parts = item.ex.split('{w}');
+  area.innerHTML = `
+    <div class="sf-label">✍️ Sentence ${sfIndex + 1} of ${sfDeck.length} · Type the missing word</div>
+    <div class="sf-sentence-box">
+      <div class="sf-sentence">
+        ${escapeHTML(parts[0])}<input type="text" class="sf-blank-input" id="sf-input" placeholder="…" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done">${escapeHTML(parts[1] || '')}
+      </div>
+      <div class="sf-translation">💡 Hint: ${escapeHTML(item.def)}</div>
+    </div>
+    <div class="sf-actions" id="sf-actions">
+      <button class="primary-btn" id="sf-check-btn">Check answer</button>
+      <button class="ghost-btn" id="sf-reveal-btn">Show answer</button>
+    </div>
+    <div class="sf-corrected" id="sf-corrected"></div>
+  `;
+  const input = document.getElementById('sf-input');
+  document.getElementById('sf-check-btn').addEventListener('click', checkSentence);
+  document.getElementById('sf-reveal-btn').addEventListener('click', revealAnswer);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') checkSentence(); });
+  setTimeout(() => input.focus(), 50);
+}
+
+function normalize(s) {
+  return s.trim().toLowerCase().replace(/['']/g, "'");
+}
+
+function checkSentence() {
+  const item = sfDeck[sfIndex];
+  const input = document.getElementById('sf-input');
+  const corrected = document.getElementById('sf-corrected');
+  const val = normalize(input.value);
+  const target = normalize(item.w);
+  const isCorrect = val === target;
+
+  input.classList.remove('correct', 'wrong');
+  input.classList.add(isCorrect ? 'correct' : 'wrong');
+  input.disabled = true;
+
+  const fullSentence = escapeHTML(item.ex).replace('{w}', `<span class="word-correct">${escapeHTML(item.w)}</span>`);
+
+  if (isCorrect) {
+    sfScore++;
+    streak++;
+    addXP(6);
+    masteredWords.add(currentLevel + '|' + currentTopic + '|' + item.w);
+    corrected.className = 'sf-corrected show ok';
+    corrected.innerHTML = `✓ Correct! <strong>${escapeHTML(item.w)}</strong> ${escapeHTML(item.phon)} — ${escapeHTML(item.def)}<br><br>${fullSentence}`;
+  } else {
+    streak = 0;
+    corrected.className = 'sf-corrected show bad';
+    corrected.innerHTML = `✗ You wrote "<span class="word-wrong">${escapeHTML(input.value || '(empty)')}</span>" — the correct word is <strong>${escapeHTML(item.w)}</strong> ${escapeHTML(item.phon)}.<br>${escapeHTML(item.def)}<br><br>${fullSentence}`;
+  }
+  refreshProgressUI();
+
+  const actions = document.getElementById('sf-actions');
+  actions.innerHTML = `<button class="primary-btn" id="sf-next-btn">Next sentence →</button>`;
+  document.getElementById('sf-next-btn').addEventListener('click', nextSentence);
+}
+
+function revealAnswer() {
+  const item = sfDeck[sfIndex];
+  const input = document.getElementById('sf-input');
+  input.value = item.w;
+  checkSentence();
+}
+
+function nextSentence() {
+  sfIndex++;
+  drawSentenceFix();
+}
+
+// ============================================================
+// SHARED END SCREEN
+// ============================================================
+function endScreenHTML(emoji, title, sub, stats, actions) {
+  return `
+    <div class="end-screen">
+      <div class="end-emoji">${emoji}</div>
+      <div class="end-title">${escapeHTML(title)}</div>
+      <div class="end-sub">${escapeHTML(sub)}</div>
+      <div class="end-stats">
+        ${stats.map(s => `<div class="end-stat"><div class="end-stat-val">${escapeHTML(String(s.val))}</div><div class="end-stat-lbl">${escapeHTML(s.lbl)}</div></div>`).join('')}
+      </div>
+      <div class="end-actions">
+        ${actions.map(a => `<button class="${a.primary ? 'primary-btn' : 'ghost-btn'}" onclick="${a.action}">${escapeHTML(a.label)}</button>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+
+// ============================================================
+// PWA SETUP -- installable, offline-capable, mobile-ready
+// ============================================================
+const ICON_192 = "data:image/png;base64,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";
+const ICON_512 = "data:image/png;base64,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";
+
+function setupPWA() {
+  document.getElementById('apple-touch-icon').href = ICON_192;
+  document.getElementById('favicon-icon').href = ICON_192;
+
+  const manifest = {
+    name: "Vocab Arena - Word Memory Game",
+    short_name: "Vocab Arena",
+    description: "Learn English vocabulary from A1 to C2 with flashcards, quizzes, and sentence practice.",
+    start_url: ".",
+    scope: ".",
+    display: "standalone",
+    orientation: "portrait-primary",
+    background_color: "#0b0e13",
+    theme_color: "#0b0e13",
+    icons: [
+      { src: ICON_192, sizes: "192x192", type: "image/png", purpose: "any maskable" },
+      { src: ICON_512, sizes: "512x512", type: "image/png", purpose: "any maskable" }
+    ]
+  };
+  const manifestBlob = new Blob([JSON.stringify(manifest)], { type: "application/json" });
+  document.getElementById('manifest-link').href = URL.createObjectURL(manifestBlob);
+
+  if ("serviceWorker" in navigator) {
+    const swSource = [
+      'const CACHE_NAME = "vocab-arena-v1";',
+      'self.addEventListener("install", (event) => { self.skipWaiting(); });',
+      'self.addEventListener("activate", (event) => { event.waitUntil(self.clients.claim()); });',
+      'self.addEventListener("fetch", (event) => {',
+      '  if (event.request.method !== "GET") return;',
+      '  event.respondWith(',
+      '    caches.open(CACHE_NAME).then(async (cache) => {',
+      '      const cached = await cache.match(event.request);',
+      '      if (cached) return cached;',
+      '      try {',
+      '        const response = await fetch(event.request);',
+      '        if (response && response.status === 200) { cache.put(event.request, response.clone()); }',
+      '        return response;',
+      '      } catch (err) {',
+      '        return cached || Response.error();',
+      '      }',
+      '    })',
+      '  );',
+      '});'
+    ].join("\n");
+    const swBlob = new Blob([swSource], { type: "application/javascript" });
+    const swUrl = URL.createObjectURL(swBlob);
+    navigator.serviceWorker.register(swUrl).catch(() => {
+      // Registration can fail on file:// origins or unsupported browsers;
+      // the app remains fully functional online without offline caching.
+    });
+  }
+
+  let deferredInstallPrompt = null;
+  const banner = document.getElementById('install-banner');
+  const installBtn = document.getElementById('install-btn');
+  const dismissBtn = document.getElementById('install-dismiss');
+
+  const alreadyInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+  const dismissed = sessionStorageSafeGet('vocab-arena-install-dismissed');
+
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (!alreadyInstalled && !dismissed) {
+      banner.classList.add('show');
+    }
+  });
+
+  installBtn.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) { banner.classList.remove('show'); return; }
+    deferredInstallPrompt.prompt();
+    await deferredInstallPrompt.userChoice;
+    deferredInstallPrompt = null;
+    banner.classList.remove('show');
+  });
+
+  dismissBtn.addEventListener('click', () => {
+    banner.classList.remove('show');
+    sessionStorageSafeSet('vocab-arena-install-dismissed', '1');
+  });
+
+  window.addEventListener('appinstalled', () => {
+    banner.classList.remove('show');
+  });
+}
+
+function sessionStorageSafeGet(key) {
+  try { return sessionStorage.getItem(key); } catch (e) { return null; }
+}
+function sessionStorageSafeSet(key, val) {
+  try { sessionStorage.setItem(key, val); } catch (e) { /* ignore */ }
+}
+
+
+// ============================================================
+// START
+// ============================================================
+setupPWA();
+init();
+</script>
+</body>
+</html>
