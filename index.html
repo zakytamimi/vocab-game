@@ -130,6 +130,60 @@
 
   /* ============ FLASHCARD MODE ============ */
   .fc-progress { font-size: 12px; color: var(--muted); margin-bottom: 18px; display: flex; justify-content: space-between; }
+  .pronounce-btn {
+    background: none; border: 1px solid var(--border2, #ffffff22); border-radius: 8px;
+    color: var(--accent, #6c7fff); font-size: 13px; padding: 3px 9px; cursor: pointer;
+    margin-left: 8px; vertical-align: middle; transition: all 0.15s; line-height: 1;
+  }
+  .pronounce-btn:hover { background: var(--pill-bg, #6c7fff22); }
+  .pronounce-btn.playing { color: #34d399; border-color: #34d39944; }
+  .add-word-fab {
+    position: fixed; bottom: 88px; right: 18px; width: 48px; height: 48px;
+    border-radius: 50%; background: var(--accent, #6c7fff); color: #fff;
+    font-size: 24px; line-height: 1; border: none; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(108,127,255,0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100; transition: transform 0.15s;
+  }
+  .add-word-fab:hover { transform: scale(1.1); }
+  #add-word-modal {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+    z-index: 200; align-items: center; justify-content: center; padding: 20px;
+  }
+  #add-word-modal.show { display: flex; }
+  .add-word-card {
+    background: var(--card, #1a1e2a); border: 1px solid var(--border2, #ffffff22);
+    border-radius: 20px; padding: 28px 24px; max-width: 420px; width: 100%;
+    animation: aw-pop 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes aw-pop { 0%{transform:scale(0.8);opacity:0} 100%{transform:scale(1);opacity:1} }
+  .add-word-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--text,#f0f2f7); }
+  .add-word-input {
+    width: 100%; background: var(--bg, #0d0f14); border: 1px solid var(--border2, #ffffff22);
+    border-radius: 10px; color: var(--text, #f0f2f7); font-family: 'Outfit', sans-serif;
+    font-size: 15px; padding: 10px 14px; outline: none; margin-bottom: 12px; box-sizing: border-box;
+  }
+  .add-word-input:focus { border-color: var(--accent, #6c7fff); }
+  .add-word-preview {
+    background: var(--bg, #0d0f14); border-radius: 10px; padding: 12px 14px;
+    margin-bottom: 12px; font-size: 13px; line-height: 1.7; min-height: 60px;
+    color: var(--muted, #8b90a0); display: none;
+  }
+  .add-word-preview.show { display: block; }
+  .aw-word { font-size: 18px; font-weight: 700; color: var(--text, #f0f2f7); }
+  .aw-level { font-size: 11px; font-weight: 700; padding: 2px 8px;
+    border-radius: 20px; background: var(--pill-bg, #6c7fff22); color: var(--accent, #6c7fff);
+    margin-left: 8px; }
+  .aw-def { color: var(--text, #f0f2f7); margin: 4px 0; }
+  .aw-ex { font-style: italic; }
+  .aw-btns { display: flex; gap: 8px; }
+  .aw-btn {
+    flex: 1; padding: 10px; border-radius: 10px; border: none;
+    font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .aw-btn.primary { background: var(--accent, #6c7fff); color: #fff; }
+  .aw-btn.secondary { background: var(--border, #ffffff12); color: var(--muted, #8b90a0); }
+
   .flashcard-wrap { display: flex; justify-content: center; margin-bottom: 24px; }
   .flashcard {
     width: 100%; max-width: 460px; height: 260px; position: relative; cursor: pointer;
@@ -710,7 +764,10 @@ function drawFlashcard() {
       <div class="flashcard" id="flashcard">
         <div class="flashcard-inner" id="flashcard-inner">
           <div class="fc-face fc-front">
-            <div class="fc-word">${escapeHTML(item.w)}</div>
+            <div class="fc-word">
+              ${escapeHTML(item.w)}
+              <button class="pronounce-btn" data-word="${escapeHTML(item.w)}" onclick="event.stopPropagation();pronounceWord(this.dataset.word)" title="Hear pronunciation">&#128266;</button>
+            </div>
             <div class="fc-phon">${escapeHTML(item.phon)}</div>
             <div class="fc-pos">${escapeHTML(item.pos)}</div>
             <div class="fc-hint">Tap to reveal meaning</div>
@@ -1104,10 +1161,157 @@ function sessionStorageSafeSet(key, val) {
 
 
 // ============================================================
+// PRONUNCIATION via Web Speech API (built-in, works offline)
+// ============================================================
+function pronounceWord(word) {
+  if (!('speechSynthesis' in window)) {
+    console.warn('Web Speech API not supported in this browser');
+    return;
+  }
+  // Cancel any ongoing speech
+  window.speechSynthesis.cancel();
+
+  const utt = new SpeechSynthesisUtterance(word);
+  utt.lang = 'en-US';   // American English
+  utt.rate = 0.85;      // Slightly slower so each phoneme is clear
+  utt.pitch = 1.0;
+
+  // Visual feedback: highlight the pronounce button while speaking
+  utt.onstart = () => {
+    document.querySelectorAll('.pronounce-btn').forEach(b => b.classList.add('playing'));
+  };
+  utt.onend = utt.onerror = () => {
+    document.querySelectorAll('.pronounce-btn').forEach(b => b.classList.remove('playing'));
+  };
+
+  // iOS Safari quirk: synthesis sometimes needs a tiny delay after cancel()
+  setTimeout(() => window.speechSynthesis.speak(utt), 50);
+}
+
+// ============================================================
+// ADD WORD — Claude generates definition, example, CEFR level
+// ============================================================
+let _pendingWord = null;
+
+function openAddWordModal() {
+  document.getElementById('add-word-modal').classList.add('show');
+  document.getElementById('aw-input').value = '';
+  document.getElementById('aw-preview').classList.remove('show');
+  document.getElementById('aw-preview').innerHTML = '';
+  document.getElementById('aw-save-row').style.display = 'none';
+  _pendingWord = null;
+  setTimeout(() => document.getElementById('aw-input').focus(), 100);
+}
+
+function closeAddWordModal() {
+  document.getElementById('add-word-modal').classList.remove('show');
+}
+
+async function generateWordDef() {
+  const word = document.getElementById('aw-input').value.trim();
+  if (!word) return;
+  const preview = document.getElementById('aw-preview');
+  const saveRow = document.getElementById('aw-save-row');
+  const genBtn  = document.getElementById('aw-gen-btn');
+  preview.innerHTML = '<span style="color:var(--accent)">&#10022; Generating&hellip;</span>';
+  preview.classList.add('show');
+  saveRow.style.display = 'none';
+  genBtn.disabled = true; genBtn.textContent = '&hellip;';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6', max_tokens: 300,
+        system: 'You are a dictionary. Respond ONLY with a valid JSON object, no markdown, no extra text. Fields: "w" (string), "phon" (IPA string), "pos" (noun/verb/adj/adv/prep/conj), "def" (one-sentence definition string), "ex" (example sentence using {w} as a placeholder string), "level" (exactly one of A1 A2 B1 B2 C1 C2). If not a real English word set def to "Not a recognised English word."',
+        messages: [{ role: 'user', content: 'Word: "' + word + '"' }]
+      })
+    });
+    const data = await res.json();
+    let text = data.content && data.content[0] ? data.content[0].text : '';
+    text = text.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```\s*$/i,'').trim();
+    const info = JSON.parse(text);
+    _pendingWord = info;
+    const exHtml = (info.ex||'').replace('{w}', '<strong>' + (info.w||'') + '</strong>');
+    preview.innerHTML =
+      '<div><span class="aw-word">' + (info.w||'') + '</span>' +
+      '<span class="aw-level">' + (info.level||'') + '</span>' +
+      ' <span style="font-size:12px;color:var(--muted)">' + (info.pos||'') + '</span>' +
+      ' <span style="font-size:12px;color:var(--muted)">' + (info.phon||'') + '</span></div>' +
+      '<div class="aw-def">' + (info.def||'') + '</div>' +
+      '<div class="aw-ex">' + exHtml + '</div>';
+    saveRow.style.display = 'flex';
+  } catch(e) {
+    preview.innerHTML = '<span style="color:var(--red)">&#9888; Could not generate. Check connection.</span>';
+  } finally {
+    genBtn.disabled = false; genBtn.textContent = 'Generate &#10022;';
+  }
+}
+
+function saveCustomWord() {
+  if (!_pendingWord) return;
+  const KEY = 'vocab-custom-words';
+  let customs = [];
+  try { customs = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e) {}
+  if (!customs.find(c => c.w.toLowerCase() === _pendingWord.w.toLowerCase())) {
+    customs.push(_pendingWord);
+    localStorage.setItem(KEY, JSON.stringify(customs));
+  }
+  const level = _pendingWord.level || 'B1';
+  const topic = 'My Words ⭐';
+  if (!VOCAB_RAW[level]) VOCAB_RAW[level] = {};
+  if (!VOCAB_RAW[level][topic]) VOCAB_RAW[level][topic] = [];
+  if (!VOCAB_RAW[level][topic].find(w => w.w === _pendingWord.w))
+    VOCAB_RAW[level][topic].push(_pendingWord);
+  closeAddWordModal();
+  const w = _pendingWord.w, lv = level;
+  _pendingWord = null;
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:160px;left:50%;transform:translateX(-50%);background:#34d39922;border:1px solid #34d39944;color:#34d399;font-size:13px;font-weight:600;padding:10px 18px;border-radius:10px;z-index:300;pointer-events:none;';
+  toast.textContent = '\u2713 "' + w + '" added to My Words (' + lv + ')';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+// Load persisted custom words into VOCAB_RAW on startup
+(function loadCustomWords() {
+  try {
+    const topic = 'My Words ⭐';
+    JSON.parse(localStorage.getItem('vocab-custom-words') || '[]').forEach(w => {
+      const level = w.level || 'B1';
+      if (!VOCAB_RAW[level]) VOCAB_RAW[level] = {};
+      if (!VOCAB_RAW[level][topic]) VOCAB_RAW[level][topic] = [];
+      if (!VOCAB_RAW[level][topic].find(x => x.w === w.w))
+        VOCAB_RAW[level][topic].push(w);
+    });
+  } catch(e) {}
+})();
+
+// ============================================================
 // START
 // ============================================================
 setupPWA();
 init();
 </script>
+  <button class="add-word-fab" onclick="openAddWordModal()" title="Add a custom word">+</button>
+
+  <div id="add-word-modal" onclick="if(event.target===this)closeAddWordModal()">
+    <div class="add-word-card">
+      <h3>&#10024; Add a Word</h3>
+      <input class="add-word-input" id="aw-input" placeholder="Type any English word&hellip;"
+        autocomplete="off" spellcheck="false"
+        onkeydown="if(event.key==='Enter')generateWordDef()">
+      <div class="aw-btns" style="margin-bottom:12px">
+        <button class="aw-btn primary" onclick="generateWordDef()" id="aw-gen-btn">Generate &#10022;</button>
+        <button class="aw-btn secondary" onclick="closeAddWordModal()">Cancel</button>
+      </div>
+      <div class="add-word-preview" id="aw-preview"></div>
+      <div class="aw-btns" id="aw-save-row" style="display:none;margin-top:8px">
+        <button class="aw-btn primary" onclick="saveCustomWord()">Save to My Words &#10003;</button>
+        <button class="aw-btn secondary" onclick="document.getElementById('aw-preview').classList.remove('show');document.getElementById('aw-save-row').style.display='none'">Discard</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
