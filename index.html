@@ -1232,7 +1232,7 @@ async function generateWordDef() {
   // Check duplicate BEFORE hitting the API
   let existing = [];
   try { existing = JSON.parse(localStorage.getItem('vocab-custom-words') || '[]'); } catch(e) {}
-  const isDupe = existing.find(c => c.w.toLowerCase() === word.toLowerCase());
+  const isDupe = existing.find(c => c && c.w && c.w.toLowerCase() === word.toLowerCase());
   if (isDupe) {
     preview.innerHTML =
       '<span style="color:var(--amber)">&#9888; <strong>"' + isDupe.w + '"</strong> is already in your My Words list (' + (isDupe.level||'') + ').</span>';
@@ -1283,7 +1283,7 @@ function saveCustomWord() {
   let customs = [];
   try { customs = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e) {}
   // Final duplicate guard (edge case: word added in another tab between generate and save)
-  if (customs.find(c => c.w.toLowerCase() === _pendingWord.w.toLowerCase())) {
+  if (customs.find(c => c && c.w && c.w.toLowerCase() === _pendingWord.w.toLowerCase())) {
     const preview = document.getElementById('aw-preview');
     if (preview) {
       preview.innerHTML = '<span style="color:var(--amber)">&#9888; <strong>"' + _pendingWord.w + '"</strong> is already saved.</span>';
