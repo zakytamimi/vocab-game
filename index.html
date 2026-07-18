@@ -1387,8 +1387,8 @@ async function syncCustomWordToSupabase(wordObj) {
     });
     showSyncBadge('synced', 'Word saved');
   } catch(e) {
-    console.warn('Supabase word sync failed:', e.message);
-    showSyncBadge('error', 'Offline — saved locally');
+    console.error('Supabase word sync failed:', e.message);
+    showSyncBadge('error', 'Sync error: ' + e.message);
   }
 }
 
