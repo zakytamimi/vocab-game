@@ -1244,7 +1244,7 @@ async function generateWordDef() {
   preview.innerHTML = '<span style="color:var(--accent)">&#10022; Generating&hellip;</span>';
   preview.classList.add('show');
   saveRow.style.display = 'none';
-  genBtn.disabled = true; genBtn.textContent = '&hellip;';
+  genBtn.disabled = true; genBtn.textContent = '…';
   try {
     // Call via Supabase Edge Function (proxy to Anthropic — avoids CORS)
     const res = await fetch('https://whqstialjadovesbafnn.supabase.co/functions/v1/generate-word', {
@@ -1270,9 +1270,10 @@ async function generateWordDef() {
       '<div class="aw-ex">' + exHtml + '</div>';
     saveRow.style.display = 'flex';
   } catch(e) {
-    preview.innerHTML = '<span style="color:var(--red)">&#9888; Could not generate. Check connection.</span>';
+    const errMsg = e && e.message ? e.message : 'Unknown error';
+    preview.innerHTML = '<span style="color:var(--red)">&#9888; Error: ' + errMsg + '</span>';
   } finally {
-    genBtn.disabled = false; genBtn.textContent = 'Generate &#10022;';
+    genBtn.disabled = false; genBtn.textContent = 'Generate ✦';
   }
 }
 
