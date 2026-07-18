@@ -1246,17 +1246,17 @@ async function generateWordDef() {
   saveRow.style.display = 'none';
   genBtn.disabled = true; genBtn.textContent = '&hellip;';
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    // Call via Supabase Edge Function (proxy to Anthropic — avoids CORS)
+    const res = await fetch('https://whqstialjadovesbafnn.supabase.co/functions/v1/generate-word', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6', max_tokens: 300,
-        system: 'You are a dictionary. Respond ONLY with a valid JSON object, no markdown, no extra text. Fields: "w" (string), "phon" (IPA string), "pos" (noun/verb/adj/adv/prep/conj), "def" (one-sentence definition string), "ex" (example sentence using {w} as a placeholder string), "level" (exactly one of A1 A2 B1 B2 C1 C2). If not a real English word set def to "Not a recognised English word."',
-        messages: [{ role: 'user', content: 'Word: "' + word + '"' }]
-      })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndocXN0aWFsamFkb3Zlc2JhZm5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNTg5NjQsImV4cCI6MjA5OTkzNDk2NH0.AbX3vNGR2LS7iF1sfwtqMLIj3wTfnQJd2PcdqDxkN9I'
+      },
+      body: JSON.stringify({ word })
     });
-    const data = await res.json();
-    let text = data.content && data.content[0] ? data.content[0].text : '';
+    if (!res.ok) throw new Error('Edge function error: ' + res.status);
+    let text = await res.text();
     text = text.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```\s*$/i,'').trim();
     const info = JSON.parse(text);
     _pendingWord = info;
