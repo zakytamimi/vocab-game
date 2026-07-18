@@ -130,6 +130,21 @@
 
   /* ============ FLASHCARD MODE ============ */
   .fc-progress { font-size: 12px; color: var(--muted); margin-bottom: 18px; display: flex; justify-content: space-between; }
+  /* SUPABASE SYNC INDICATOR */
+  #sync-badge {
+    position: fixed; top: 12px; right: 12px; font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px; z-index: 50;
+    display: none; pointer-events: none;
+  }
+  #sync-badge.syncing { display: inline-flex; align-items: center; gap: 5px;
+    background: #6c7fff22; color: var(--accent, #6c7fff); border: 1px solid #6c7fff44; }
+  #sync-badge.synced  { display: inline-flex; align-items: center; gap: 5px;
+    background: #34d39922; color: #34d399; border: 1px solid #34d39944; }
+  #sync-badge.error   { display: inline-flex; align-items: center; gap: 5px;
+    background: #f8717122; color: #f87171; border: 1px solid #f8717144; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sync-spin { display: inline-block; animation: spin 1s linear infinite; }
+
   .pronounce-btn {
     background: none; border: 1px solid var(--border2, #ffffff22); border-radius: 8px;
     color: var(--accent, #6c7fff); font-size: 13px; padding: 3px 9px; cursor: pointer;
@@ -1213,6 +1228,19 @@ async function generateWordDef() {
   const preview = document.getElementById('aw-preview');
   const saveRow = document.getElementById('aw-save-row');
   const genBtn  = document.getElementById('aw-gen-btn');
+
+  // Check duplicate BEFORE hitting the API
+  let existing = [];
+  try { existing = JSON.parse(localStorage.getItem('vocab-custom-words') || '[]'); } catch(e) {}
+  const isDupe = existing.find(c => c.w.toLowerCase() === word.toLowerCase());
+  if (isDupe) {
+    preview.innerHTML =
+      '<span style="color:var(--amber)">&#9888; <strong>"' + isDupe.w + '"</strong> is already in your My Words list (' + (isDupe.level||'') + ').</span>';
+    preview.classList.add('show');
+    saveRow.style.display = 'none';
+    return;
+  }
+
   preview.innerHTML = '<span style="color:var(--accent)">&#10022; Generating&hellip;</span>';
   preview.classList.add('show');
   saveRow.style.display = 'none';
@@ -1253,10 +1281,19 @@ function saveCustomWord() {
   const KEY = 'vocab-custom-words';
   let customs = [];
   try { customs = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e) {}
-  if (!customs.find(c => c.w.toLowerCase() === _pendingWord.w.toLowerCase())) {
-    customs.push(_pendingWord);
-    localStorage.setItem(KEY, JSON.stringify(customs));
+  // Final duplicate guard (edge case: word added in another tab between generate and save)
+  if (customs.find(c => c.w.toLowerCase() === _pendingWord.w.toLowerCase())) {
+    const preview = document.getElementById('aw-preview');
+    if (preview) {
+      preview.innerHTML = '<span style="color:var(--amber)">&#9888; <strong>"' + _pendingWord.w + '"</strong> is already saved.</span>';
+      preview.classList.add('show');
+    }
+    document.getElementById('aw-save-row').style.display = 'none';
+    _pendingWord = null;
+    return;
   }
+  customs.push(_pendingWord);
+  localStorage.setItem(KEY, JSON.stringify(customs));
   const level = _pendingWord.level || 'B1';
   const topic = 'My Words ⭐';
   if (!VOCAB_RAW[level]) VOCAB_RAW[level] = {};
@@ -1288,11 +1325,177 @@ function saveCustomWord() {
 })();
 
 // ============================================================
+// SUPABASE SYNC
+// ============================================================
+const SUPA_URL = 'https://whqstialjadovesbafnn.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndocXN0aWFsamFkb3Zlc2JhZm5uIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNTg5NjQsImV4cCI6MjA5OTkzNDk2NH0.AbX3vNGR2LS7iF1sfwtqMLIj3wTfnQJd2PcdqDxkN9I';
+
+// Get or create a persistent anonymous user ID
+function getUserId() {
+  let uid = localStorage.getItem('vocab-user-id');
+  if (!uid) {
+    uid = 'u_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    localStorage.setItem('vocab-user-id', uid);
+  }
+  return uid;
+}
+
+function showSyncBadge(state, msg) {
+  const el = document.getElementById('sync-badge');
+  if (!el) return;
+  el.className = 'sync-badge ' + state;
+  if (state === 'syncing') el.innerHTML = '<span class="sync-spin">⟳</span> ' + (msg || 'Syncing…');
+  else if (state === 'synced') el.innerHTML = '✓ ' + (msg || 'Synced');
+  else el.innerHTML = '⚠ ' + (msg || 'Sync failed');
+  el.classList.add(state);
+  if (state !== 'syncing') setTimeout(() => { el.className = ''; }, 3000);
+}
+
+async function supaFetch(path, method, body) {
+  const res = await fetch(SUPA_URL + '/rest/v1/' + path, {
+    method: method || 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer ' + SUPA_KEY,
+      'Prefer': method === 'POST' ? 'resolution=merge-duplicates,return=minimal' : ''
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err);
+  }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+// ── Custom Words ───────────────────────────────────────────
+async function syncCustomWordToSupabase(wordObj) {
+  const uid = getUserId();
+  try {
+    showSyncBadge('syncing', 'Saving word…');
+    await supaFetch('custom_words', 'POST', {
+      user_id: uid,
+      word:  wordObj.w,
+      phon:  wordObj.phon  || '',
+      pos:   wordObj.pos   || '',
+      def:   wordObj.def   || '',
+      ex:    wordObj.ex    || '',
+      level: wordObj.level || 'B1'
+    });
+    showSyncBadge('synced', 'Word saved');
+  } catch(e) {
+    console.warn('Supabase word sync failed:', e.message);
+    showSyncBadge('error', 'Offline — saved locally');
+  }
+}
+
+async function loadCustomWordsFromSupabase() {
+  const uid = getUserId();
+  try {
+    const rows = await supaFetch('custom_words?user_id=eq.' + encodeURIComponent(uid) + '&order=created_at.asc');
+    if (!rows || !rows.length) return;
+    const topic = 'My Words ⭐';
+    const local = [];
+    rows.forEach(row => {
+      const w = { w: row.word, phon: row.phon, pos: row.pos, def: row.def, ex: row.ex, level: row.level };
+      local.push(w);
+      const lv = row.level || 'B1';
+      if (!VOCAB_RAW[lv]) VOCAB_RAW[lv] = {};
+      if (!VOCAB_RAW[lv][topic]) VOCAB_RAW[lv][topic] = [];
+      if (!VOCAB_RAW[lv][topic].find(x => x.w === w.w)) VOCAB_RAW[lv][topic].push(w);
+    });
+    // Merge into localStorage so offline still works
+    let existing = [];
+    try { existing = JSON.parse(localStorage.getItem('vocab-custom-words') || '[]'); } catch(e) {}
+    rows.forEach(row => {
+      if (!existing.find(e => e.w.toLowerCase() === row.word.toLowerCase()))
+        existing.push({ w: row.word, phon: row.phon, pos: row.pos, def: row.def, ex: row.ex, level: row.level });
+    });
+    localStorage.setItem('vocab-custom-words', JSON.stringify(existing));
+  } catch(e) {
+    console.warn('Supabase word load failed, using localStorage:', e.message);
+  }
+}
+
+// ── User Progress ──────────────────────────────────────────
+async function syncProgressToSupabase() {
+  const uid = getUserId();
+  try {
+    await supaFetch('user_progress', 'POST', {
+      user_id: uid,
+      mastered_words: Array.from(masteredWords),
+      xp: xp,
+      streak: streak,
+      updated_at: new Date().toISOString()
+    });
+  } catch(e) {
+    console.warn('Progress sync failed:', e.message);
+  }
+}
+
+async function loadProgressFromSupabase() {
+  const uid = getUserId();
+  try {
+    const rows = await supaFetch('user_progress?user_id=eq.' + encodeURIComponent(uid) + '&limit=1');
+    if (!rows || !rows.length) return;
+    const p = rows[0];
+    // Only apply remote data if it's ahead of local
+    const remoteXP = p.xp || 0;
+    if (remoteXP > xp) {
+      xp = remoteXP;
+      streak = p.streak || streak;
+      if (Array.isArray(p.mastered_words)) {
+        p.mastered_words.forEach(k => masteredWords.add(k));
+      }
+      updateStats();
+      showSyncBadge('synced', 'Progress loaded');
+    }
+  } catch(e) {
+    console.warn('Progress load failed, using local state:', e.message);
+  }
+}
+
+// Debounced progress sync — don't hammer Supabase on every XP gain
+let _syncTimer = null;
+function debouncedProgressSync() {
+  clearTimeout(_syncTimer);
+  _syncTimer = setTimeout(syncProgressToSupabase, 4000);
+}
+
+// ── Patch addXP to trigger background sync ─────────────────
+const _origAddXP = addXP;
+window.addXP = function(amount) {
+  _origAddXP(amount);
+  debouncedProgressSync();
+};
+addXP = window.addXP;
+
+// ── Patch saveCustomWord to also sync to Supabase ──────────
+const _origSaveCustomWord = saveCustomWord;
+window.saveCustomWord = async function() {
+  const wordToSync = _pendingWord; // capture before origSave clears it
+  _origSaveCustomWord();           // saves to localStorage immediately
+  if (wordToSync) await syncCustomWordToSupabase(wordToSync);
+};
+saveCustomWord = window.saveCustomWord;
+
+// ============================================================
 // START
 // ============================================================
 setupPWA();
 init();
+
+// Load from Supabase in background after UI is ready
+setTimeout(async () => {
+  await loadCustomWordsFromSupabase();
+  await loadProgressFromSupabase();
+  // Re-render so newly loaded words/progress show up
+  refreshProgressUI();
+}, 800);
 </script>
+  <div id="sync-badge"></div>
   <button class="add-word-fab" onclick="openAddWordModal()" title="Add a custom word">+</button>
 
   <div id="add-word-modal" onclick="if(event.target===this)closeAddWordModal()">
